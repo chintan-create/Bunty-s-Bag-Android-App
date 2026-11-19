@@ -58,6 +58,8 @@ sealed interface RazorpayOutcome {
         val signature: String?
     ) : RazorpayOutcome
 
+    data object Cancelled : RazorpayOutcome
+
     data class Error(
         val code: Int,
         val message: String
@@ -84,12 +86,37 @@ object RazorpayCheckoutBridge {
     }
 
     fun emitError(code: Int, response: String?) {
-        _outcomes.tryEmit(
-            RazorpayOutcome.Error(
-                code = code,
-                message = response?.takeIf { it.isNotBlank() } ?: "Payment cancelled or failed (code $code)."
+        val cleanMessage = parseErrorMessage(response)
+        val isUserCancellation = code == Checkout.PAYMENT_CANCELED ||
+            code == 0 ||
+            cleanMessage.contains("cancel", ignoreCase = true)
+        if (isUserCancellation) {
+            _outcomes.tryEmit(RazorpayOutcome.Cancelled)
+        } else {
+            _outcomes.tryEmit(
+                RazorpayOutcome.Error(
+                    code = code,
+                    message = cleanMessage.ifBlank { "Payment could not be completed. Please try again." }
+                )
             )
-        )
+        }
+    }
+
+    private fun parseErrorMessage(raw: String?): String {
+        val trimmed = raw?.trim().orEmpty()
+        if (trimmed.isBlank() || trimmed.equals("undefined", ignoreCase = true)) return ""
+        if (trimmed.startsWith("{")) {
+            return try {
+                val root = JSONObject(trimmed)
+                val errorObj = root.optJSONObject("error")
+                val desc = errorObj?.optString("description").orEmpty()
+                val reason = errorObj?.optString("reason").orEmpty()
+                desc.ifBlank { reason }.ifBlank { root.optString("description") }
+            } catch (_: Exception) {
+                ""
+            }
+        }
+        return trimmed
     }
 }
 
@@ -111,7 +138,7 @@ object RazorpayPaymentGateway {
         backendBaseUrl.startsWith("https://", ignoreCase = true) &&
             !backendBaseUrl.contains("PLACEHOLDER", ignoreCase = true)
 
-    fun isFullyConfigured(): Boolean = isKeyConfigured() && isBackendConfigured()
+    fun isOnlineCheckoutReady(): Boolean = isKeyConfigured()
 
     private fun createApiService(): PaymentApiService {
         val normalizedBase = if (backendBaseUrl.endsWith("/")) backendBaseUrl else "$backendBaseUrl/"
@@ -137,7 +164,7 @@ object RazorpayPaymentGateway {
 
     suspend fun createServerOrderId(amountInr: Long, receipt: String): Result<String> {
         if (!isBackendConfigured()) {
-            return Result.failure(IllegalStateException("Payment backend URL is not configured in Secrets."))
+            return Result.failure(IllegalStateException("Payment backend URL is not configured."))
         }
         return try {
             val response = createApiService().createOrder(
@@ -162,7 +189,7 @@ object RazorpayPaymentGateway {
         signature: String
     ): Result<Boolean> {
         if (!isBackendConfigured()) {
-            return Result.failure(IllegalStateException("Payment backend URL is not configured in Secrets."))
+            return Result.failure(IllegalStateException("Payment backend URL is not configured."))
         }
         return try {
             val response = createApiService().verifyPayment(
@@ -187,10 +214,10 @@ object RazorpayPaymentGateway {
         customerName: String,
         customerEmail: String,
         customerPhone: String,
-        razorpayOrderId: String
+        razorpayOrderId: String? = null
     ): Result<Unit> {
         if (!isKeyConfigured()) {
-            return Result.failure(IllegalStateException("RAZORPAY_KEY_ID is missing in Secrets."))
+            return Result.failure(IllegalStateException("Online payment key is not configured yet."))
         }
         return try {
             val checkout = Checkout()
@@ -201,7 +228,16 @@ object RazorpayPaymentGateway {
                 put("theme.color", "#8B2635")
                 put("currency", "INR")
                 put("amount", amountInr * 100L)
-                put("order_id", razorpayOrderId)
+                if (!razorpayOrderId.isNullOrBlank()) {
+                    put("order_id", razorpayOrderId)
+                }
+                put(
+                    "retry",
+                    JSONObject().apply {
+                        put("enabled", true)
+                        put("max_count", 3)
+                    }
+                )
                 put(
                     "prefill",
                     JSONObject().apply {

@@ -125,7 +125,8 @@ fun CheckoutScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val razorpayReady = remember { RazorpayPaymentGateway.isFullyConfigured() }
+    val razorpayReady = remember { RazorpayPaymentGateway.isOnlineCheckoutReady() }
+    val backendVerifyEnabled = remember { RazorpayPaymentGateway.isBackendConfigured() }
 
     var selectedAddressId by remember { mutableStateOf<String?>(null) }
     var showAddressForm by remember { mutableStateOf(false) }
@@ -165,39 +166,63 @@ fun CheckoutScreen(
             when (outcome) {
                 is RazorpayOutcome.Success -> {
                     val snapshot = pendingSnapshot
-                    val orderId = outcome.orderId ?: pendingRazorpayOrderId ?: ""
-                    val signature = outcome.signature ?: ""
-                    if (snapshot == null || orderId.isBlank() || signature.isBlank()) {
+                    if (snapshot == null) {
                         isGatewayBusy = false
-                        gatewayError = "Incomplete payment verification details received from Razorpay."
-                    } else {
-                        val verifyResult = RazorpayPaymentGateway.verifyPaymentSignature(
-                            orderId = orderId,
-                            paymentId = outcome.paymentId,
-                            signature = signature
-                        )
-                        isGatewayBusy = false
-                        verifyResult.onSuccess { verified ->
-                            if (verified) {
-                                gatewayError = null
-                                onPlaceOrder(
-                                    snapshot.cartItems,
-                                    snapshot.address,
-                                    PaymentMethod.RAZORPAY_ONLINE,
-                                    snapshot.giftNote,
-                                    outcome.paymentId
-                                ) { orderNum ->
-                                    pendingSnapshot = null
-                                    pendingRazorpayOrderId = null
-                                    placedOrderNumber = orderNum
+                    } else if (backendVerifyEnabled) {
+                        val orderId = outcome.orderId ?: pendingRazorpayOrderId ?: ""
+                        val signature = outcome.signature ?: ""
+                        if (orderId.isBlank() || signature.isBlank()) {
+                            isGatewayBusy = false
+                            gatewayError = "Payment confirmation was incomplete. Please try again."
+                        } else {
+                            val verifyResult = RazorpayPaymentGateway.verifyPaymentSignature(
+                                orderId = orderId,
+                                paymentId = outcome.paymentId,
+                                signature = signature
+                            )
+                            isGatewayBusy = false
+                            verifyResult.onSuccess { verified ->
+                                if (verified) {
+                                    gatewayError = null
+                                    onPlaceOrder(
+                                        snapshot.cartItems,
+                                        snapshot.address,
+                                        PaymentMethod.RAZORPAY_ONLINE,
+                                        snapshot.giftNote,
+                                        outcome.paymentId
+                                    ) { orderNum ->
+                                        pendingSnapshot = null
+                                        pendingRazorpayOrderId = null
+                                        placedOrderNumber = orderNum
+                                    }
+                                } else {
+                                    gatewayError = "Payment could not be verified. Please retry."
                                 }
-                            } else {
-                                gatewayError = "Payment signature could not be verified by backend."
+                            }.onFailure { err ->
+                                gatewayError = err.message ?: "Unable to verify payment."
                             }
-                        }.onFailure { err ->
-                            gatewayError = err.message ?: "Unable to verify Razorpay payment."
+                        }
+                    } else {
+                        isGatewayBusy = false
+                        gatewayError = null
+                        onPlaceOrder(
+                            snapshot.cartItems,
+                            snapshot.address,
+                            PaymentMethod.RAZORPAY_ONLINE,
+                            snapshot.giftNote,
+                            outcome.paymentId
+                        ) { orderNum ->
+                            pendingSnapshot = null
+                            pendingRazorpayOrderId = null
+                            placedOrderNumber = orderNum
                         }
                     }
+                }
+                is RazorpayOutcome.Cancelled -> {
+                    isGatewayBusy = false
+                    pendingSnapshot = null
+                    pendingRazorpayOrderId = null
+                    gatewayError = null
                 }
                 is RazorpayOutcome.Error -> {
                     isGatewayBusy = false
@@ -285,26 +310,41 @@ fun CheckoutScreen(
                                         giftNote = giftNote
                                     )
                                     pendingSnapshot = snapshot
-                                    coroutineScope.launch {
-                                        val receipt = "bb_${System.currentTimeMillis()}"
-                                        val orderResult = RazorpayPaymentGateway.createServerOrderId(total, receipt)
-                                        orderResult.onSuccess { serverOrderId ->
-                                            pendingRazorpayOrderId = serverOrderId
-                                            val launchResult = RazorpayPaymentGateway.launchCheckout(
-                                                activity = activity,
-                                                amountInr = total,
-                                                customerName = selectedAddress.recipientName,
-                                                customerEmail = userEmail,
-                                                customerPhone = selectedAddress.phone,
-                                                razorpayOrderId = serverOrderId
-                                            )
-                                            launchResult.onFailure { err ->
+                                    if (backendVerifyEnabled) {
+                                        coroutineScope.launch {
+                                            val receipt = "bb_${System.currentTimeMillis()}"
+                                            val orderResult = RazorpayPaymentGateway.createServerOrderId(total, receipt)
+                                            orderResult.onSuccess { serverOrderId ->
+                                                pendingRazorpayOrderId = serverOrderId
+                                                val launchResult = RazorpayPaymentGateway.launchCheckout(
+                                                    activity = activity,
+                                                    amountInr = total,
+                                                    customerName = selectedAddress.recipientName,
+                                                    customerEmail = userEmail,
+                                                    customerPhone = selectedAddress.phone,
+                                                    razorpayOrderId = serverOrderId
+                                                )
+                                                launchResult.onFailure { err ->
+                                                    isGatewayBusy = false
+                                                    gatewayError = err.message ?: "Failed to open Razorpay checkout."
+                                                }
+                                            }.onFailure { err ->
                                                 isGatewayBusy = false
-                                                gatewayError = err.message ?: "Failed to open Razorpay checkout."
+                                                gatewayError = err.message ?: "Could not create Razorpay order on backend."
                                             }
-                                        }.onFailure { err ->
+                                        }
+                                    } else {
+                                        val launchResult = RazorpayPaymentGateway.launchCheckout(
+                                            activity = activity,
+                                            amountInr = total,
+                                            customerName = selectedAddress.recipientName,
+                                            customerEmail = userEmail,
+                                            customerPhone = selectedAddress.phone,
+                                            razorpayOrderId = null
+                                        )
+                                        launchResult.onFailure { err ->
                                             isGatewayBusy = false
-                                            gatewayError = err.message ?: "Could not create Razorpay order on backend."
+                                            gatewayError = err.message ?: "Failed to open Razorpay checkout."
                                         }
                                     }
                                 } else {
@@ -608,16 +648,12 @@ fun CheckoutScreen(
                                 )
                                 Text(
                                     text = if (isRazorpay && !razorpayReady) {
-                                        "Configure RAZORPAY_KEY_ID & PAYMENT_BACKEND_URL in AI Studio Secrets to enable online payment"
+                                        "Add RAZORPAY_KEY_ID in Secrets to enable UPI, Cards & Netbanking"
                                     } else {
                                         method.subtitle
                                     },
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (isRazorpay && !razorpayReady) {
-                                        MaterialTheme.colorScheme.error
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
