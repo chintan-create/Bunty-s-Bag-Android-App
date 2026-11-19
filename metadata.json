@@ -1,0 +1,6 @@
+{
+  "name": "Bunty's Bag",
+  "description": "Traditional handmade Kutchi artisan store for browsing and purchasing embroidered bags, textiles, mirror work, and crafts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Bunty\'s Bag</string>
+    <string name="store_tagline">Handcrafted Kutchi Heritage Store</string>
+    <string name="nav_shop">Shop</string>
+    <string name="nav_wishlist">Saved</string>
+    <string name="nav_bag">Bag</string>
+    <string name="nav_orders">Orders</string>
+    <string name="search_placeholder">Search Kutchi bags, Ajrakh, mirror work…</string>
+    <string name="free_shipping_note">Complimentary artisan packaging &amp; free shipping over ₹1,999</string>
+</resources>

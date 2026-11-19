@@ -1,0 +1,173 @@
+{
+  "entities": {
+    "CartItem": {
+      "title": "CartItem",
+      "description": "A Kutchi handcrafted product line item in a shopper's bag.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "description": "Catalog identifier for the product" },
+        "productName": { "type": "string", "description": "Display name of the Kutchi product" },
+        "artisanOrigin": { "type": "string", "description": "Village and region in Kutch where crafted" },
+        "craftType": { "type": "string", "description": "Traditional craft technique" },
+        "variant": { "type": "string", "description": "Selected colorway or motif variant" },
+        "unitPriceInr": { "type": "integer", "description": "Unit price in INR" },
+        "quantity": { "type": "integer", "description": "Quantity in bag (1..20)" },
+        "drawableKey": { "type": "string", "description": "Local bundled product artwork key" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp via FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "productId",
+        "productName",
+        "artisanOrigin",
+        "craftType",
+        "variant",
+        "unitPriceInr",
+        "quantity",
+        "drawableKey",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WishlistItem": {
+      "title": "WishlistItem",
+      "description": "A saved Kutchi handcrafted product in a shopper's wishlist.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "description": "Catalog identifier for the product" },
+        "productName": { "type": "string", "description": "Display name of the Kutchi product" },
+        "unitPriceInr": { "type": "integer", "description": "Unit price in INR" },
+        "drawableKey": { "type": "string", "description": "Local bundled product artwork key" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "productId",
+        "productName",
+        "unitPriceInr",
+        "drawableKey",
+        "createdAt"
+      ]
+    },
+    "ShippingAddress": {
+      "title": "ShippingAddress",
+      "description": "A saved delivery address for a shopper.",
+      "type": "object",
+      "properties": {
+        "recipientName": { "type": "string", "description": "Recipient full name" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "streetLine": { "type": "string", "description": "House, street, and locality" },
+        "city": { "type": "string", "description": "City or town" },
+        "state": { "type": "string", "description": "State or province" },
+        "postalCode": { "type": "string", "description": "PIN or postal code" },
+        "label": { "type": "string", "description": "Address label such as Home or Studio" },
+        "preferred": { "type": "boolean", "description": "Whether this is the preferred delivery address" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp via FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "recipientName",
+        "phone",
+        "streetLine",
+        "city",
+        "state",
+        "postalCode",
+        "label",
+        "preferred",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A placed customer order for Kutchi handmade items.",
+      "type": "object",
+      "properties": {
+        "orderNumber": { "type": "string", "description": "Human-readable order code" },
+        "status": {
+          "type": "string",
+          "enum": ["placed", "packing", "shipped", "delivered", "cancelled"],
+          "description": "Fulfillment status"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["cod", "upi_collect", "card_on_delivery"],
+          "description": "Selected payment method"
+        },
+        "recipientName": { "type": "string", "description": "Recipient full name" },
+        "phone": { "type": "string", "description": "Delivery contact phone" },
+        "shippingSummary": { "type": "string", "description": "Formatted delivery address" },
+        "giftNote": { "type": "string", "description": "Optional artisan packaging note" },
+        "subtotalInr": { "type": "integer", "description": "Order subtotal in INR" },
+        "shippingInr": { "type": "integer", "description": "Shipping fee in INR" },
+        "totalInr": { "type": "integer", "description": "Grand total in INR" },
+        "itemCount": { "type": "integer", "description": "Total quantity of items in the order" },
+        "previewTitle": { "type": "string", "description": "Primary product title for summary display" },
+        "previewDrawableKey": { "type": "string", "description": "Primary product artwork key" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp via FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "orderNumber",
+        "status",
+        "paymentMethod",
+        "recipientName",
+        "phone",
+        "shippingSummary",
+        "giftNote",
+        "subtotalInr",
+        "shippingInr",
+        "totalInr",
+        "itemCount",
+        "previewTitle",
+        "previewDrawableKey",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OrderLineItem": {
+      "title": "OrderLineItem",
+      "description": "An immutable line item snapshot inside a placed order.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "description": "Catalog identifier for the product" },
+        "productName": { "type": "string", "description": "Product name at time of order" },
+        "variant": { "type": "string", "description": "Selected colorway or motif variant" },
+        "unitPriceInr": { "type": "integer", "description": "Unit price in INR at time of order" },
+        "quantity": { "type": "integer", "description": "Ordered quantity" },
+        "drawableKey": { "type": "string", "description": "Local bundled product artwork key" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "productId",
+        "productName",
+        "variant",
+        "unitPriceInr",
+        "quantity",
+        "drawableKey",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/cart/{cartItemId}": {
+      "schema": { "$ref": "#/entities/CartItem" },
+      "description": "User-scoped shopping bag items."
+    },
+    "/users/{userId}/wishlist/{productId}": {
+      "schema": { "$ref": "#/entities/WishlistItem" },
+      "description": "User-scoped saved wishlist items."
+    },
+    "/users/{userId}/addresses/{addressId}": {
+      "schema": { "$ref": "#/entities/ShippingAddress" },
+      "description": "User-scoped delivery addresses."
+    },
+    "/users/{userId}/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "User-scoped placed orders."
+    },
+    "/users/{userId}/orders/{orderId}/items/{itemId}": {
+      "schema": { "$ref": "#/entities/OrderLineItem" },
+      "description": "Immutable line item snapshots belonging to a placed order."
+    }
+  }
+}

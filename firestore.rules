@@ -1,0 +1,227 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity validation helpers
+    function isValidCartItem(data) {
+      return data.productId is string && data.productId.size() >= 1 && data.productId.size() <= 64 &&
+             data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 120 &&
+             data.artisanOrigin is string && data.artisanOrigin.size() >= 1 && data.artisanOrigin.size() <= 80 &&
+             data.craftType is string && data.craftType.size() >= 1 && data.craftType.size() <= 80 &&
+             data.variant is string && data.variant.size() >= 1 && data.variant.size() <= 60 &&
+             data.unitPriceInr is int && data.unitPriceInr > 0 && data.unitPriceInr <= 500000 &&
+             data.quantity is int && data.quantity >= 1 && data.quantity <= 20 &&
+             data.drawableKey is string && data.drawableKey.size() >= 1 && data.drawableKey.size() <= 64 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidWishlistItem(data) {
+      return data.productId is string && data.productId.size() >= 1 && data.productId.size() <= 64 &&
+             data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 120 &&
+             data.unitPriceInr is int && data.unitPriceInr > 0 && data.unitPriceInr <= 500000 &&
+             data.drawableKey is string && data.drawableKey.size() >= 1 && data.drawableKey.size() <= 64 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidShippingAddress(data) {
+      return data.recipientName is string && data.recipientName.size() >= 2 && data.recipientName.size() <= 80 &&
+             data.phone is string && data.phone.size() >= 7 && data.phone.size() <= 20 &&
+             data.streetLine is string && data.streetLine.size() >= 4 && data.streetLine.size() <= 160 &&
+             data.city is string && data.city.size() >= 2 && data.city.size() <= 60 &&
+             data.state is string && data.state.size() >= 2 && data.state.size() <= 60 &&
+             data.postalCode is string && data.postalCode.size() >= 4 && data.postalCode.size() <= 12 &&
+             data.label is string && data.label.size() >= 1 && data.label.size() <= 30 &&
+             data.preferred is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidOrder(data) {
+      return data.orderNumber is string && data.orderNumber.size() >= 4 && data.orderNumber.size() <= 24 &&
+             data.status in ['placed', 'packing', 'shipped', 'delivered', 'cancelled'] &&
+             data.paymentMethod in ['cod', 'upi_collect', 'card_on_delivery'] &&
+             data.recipientName is string && data.recipientName.size() >= 2 && data.recipientName.size() <= 80 &&
+             data.phone is string && data.phone.size() >= 7 && data.phone.size() <= 20 &&
+             data.shippingSummary is string && data.shippingSummary.size() >= 5 && data.shippingSummary.size() <= 240 &&
+             data.giftNote is string && data.giftNote.size() <= 200 &&
+             data.subtotalInr is int && data.subtotalInr > 0 && data.subtotalInr <= 5000000 &&
+             data.shippingInr is int && data.shippingInr >= 0 && data.shippingInr <= 5000 &&
+             data.totalInr is int && data.totalInr > 0 && data.totalInr <= 5005000 &&
+             data.itemCount is int && data.itemCount >= 1 && data.itemCount <= 200 &&
+             data.previewTitle is string && data.previewTitle.size() >= 1 && data.previewTitle.size() <= 120 &&
+             data.previewDrawableKey is string && data.previewDrawableKey.size() >= 1 && data.previewDrawableKey.size() <= 64 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidOrderLineItem(data) {
+      return data.productId is string && data.productId.size() >= 1 && data.productId.size() <= 64 &&
+             data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 120 &&
+             data.variant is string && data.variant.size() >= 1 && data.variant.size() <= 60 &&
+             data.unitPriceInr is int && data.unitPriceInr > 0 && data.unitPriceInr <= 500000 &&
+             data.quantity is int && data.quantity >= 1 && data.quantity <= 20 &&
+             data.drawableKey is string && data.drawableKey.size() >= 1 && data.drawableKey.size() <= 64 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    // Shopping Bag (Cart)
+    match /users/{userId}/cart/{cartItemId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(cartItemId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(cartItemId) &&
+                       incoming().keys().hasAll([
+                         'productId', 'productName', 'artisanOrigin', 'craftType',
+                         'variant', 'unitPriceInr', 'quantity', 'drawableKey',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'productId', 'productName', 'artisanOrigin', 'craftType',
+                         'variant', 'unitPriceInr', 'quantity', 'drawableKey',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidCartItem(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(cartItemId) &&
+                       isValidCartItem(incoming()) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().productId == existing().productId &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['quantity', 'variant', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(cartItemId);
+    }
+
+    // Wishlist
+    match /users/{userId}/wishlist/{productId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(productId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(productId) &&
+                       incoming().productId == productId &&
+                       incoming().keys().hasAll(['productId', 'productName', 'unitPriceInr', 'drawableKey', 'createdAt']) &&
+                       incoming().keys().hasOnly(['productId', 'productName', 'unitPriceInr', 'drawableKey', 'createdAt']) &&
+                       isValidWishlistItem(incoming());
+
+      allow update: if false;
+      allow delete: if isOwner(userId) && isValidId(productId);
+    }
+
+    // Shipping Addresses (PII strictly isolated to owner)
+    match /users/{userId}/addresses/{addressId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(addressId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(addressId) &&
+                       incoming().keys().hasAll([
+                         'recipientName', 'phone', 'streetLine', 'city',
+                         'state', 'postalCode', 'label', 'preferred',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'recipientName', 'phone', 'streetLine', 'city',
+                         'state', 'postalCode', 'label', 'preferred',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidShippingAddress(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(addressId) &&
+                       isValidShippingAddress(incoming()) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'recipientName', 'phone', 'streetLine', 'city',
+                         'state', 'postalCode', 'label', 'preferred', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(addressId);
+    }
+
+    // Placed Orders
+    match /users/{userId}/orders/{orderId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(orderId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(orderId) &&
+                       incoming().keys().hasAll([
+                         'orderNumber', 'status', 'paymentMethod', 'recipientName',
+                         'phone', 'shippingSummary', 'giftNote', 'subtotalInr',
+                         'shippingInr', 'totalInr', 'itemCount', 'previewTitle',
+                         'previewDrawableKey', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'orderNumber', 'status', 'paymentMethod', 'recipientName',
+                         'phone', 'shippingSummary', 'giftNote', 'subtotalInr',
+                         'shippingInr', 'totalInr', 'itemCount', 'previewTitle',
+                         'previewDrawableKey', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidOrder(incoming()) &&
+                       incoming().status == 'placed' &&
+                       incoming().totalInr == incoming().subtotalInr + incoming().shippingInr;
+
+      allow update: if isOwner(userId) &&
+                       isValidId(orderId) &&
+                       isValidOrder(incoming()) &&
+                       !(existing().status in ['delivered', 'cancelled']) &&
+                       existing().status == 'placed' &&
+                       incoming().status == 'cancelled' &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+
+      allow delete: if false;
+
+      // Order Line Items (Atomic creation alongside parent Order)
+      match /items/{itemId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(orderId) && isValidId(itemId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(orderId) &&
+                         isValidId(itemId) &&
+                         incoming().keys().hasAll([
+                           'productId', 'productName', 'variant',
+                           'unitPriceInr', 'quantity', 'drawableKey', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'productId', 'productName', 'variant',
+                           'unitPriceInr', 'quantity', 'drawableKey', 'createdAt'
+                         ]) &&
+                         isValidOrderLineItem(incoming()) &&
+                         existsAfter(/databases/$(database)/documents/users/$(userId)/orders/$(orderId));
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}
