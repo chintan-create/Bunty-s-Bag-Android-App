@@ -62,13 +62,18 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.auth.attemptAutoSignIn
 import com.example.auth.authStateFlow
+import com.example.auth.deleteAccountAndData
 import com.example.auth.signOutUser
 import com.example.data.catalog.KutchiCatalog
+import com.example.data.payment.RazorpayCheckoutBridge
 import com.example.data.repository.StoreRepository
+import com.razorpay.PaymentData
+import com.razorpay.PaymentResultWithDataListener
 import com.example.ui.screens.AuthScreen
 import com.example.ui.screens.BagScreen
 import com.example.ui.screens.CheckoutScreen
 import com.example.ui.screens.OrdersProfileScreen
+import com.example.ui.screens.PrivacyPolicyScreen
 import com.example.ui.screens.ProductDetailScreen
 import com.example.ui.screens.ShopScreen
 import com.example.ui.screens.WishlistScreen
@@ -86,6 +91,7 @@ object StoreRoutes {
     const val ROUTE_BAG = "bag"
     const val ROUTE_ORDERS = "orders"
     const val ROUTE_CHECKOUT = "checkout"
+    const val ROUTE_PRIVACY_POLICY = "privacy_policy"
     const val ROUTE_PRODUCT_DETAIL = "product/{productId}"
 
     fun productDetail(productId: String): String = "product/$productId"
@@ -130,7 +136,7 @@ private val TopLevelTabs = listOf(
     )
 )
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -139,6 +145,14 @@ class MainActivity : ComponentActivity() {
                 AppNavigation()
             }
         }
+    }
+
+    override fun onPaymentSuccess(razorpayPaymentId: String?, paymentData: PaymentData?) {
+        RazorpayCheckoutBridge.emitSuccess(razorpayPaymentId, paymentData)
+    }
+
+    override fun onPaymentError(code: Int, response: String?, paymentData: PaymentData?) {
+        RazorpayCheckoutBridge.emitError(code, response)
     }
 }
 
@@ -192,6 +206,16 @@ fun AppNavigation(auth: FirebaseAuth = Firebase.auth) {
                         credentialManager = credentialManager,
                         scope = scope
                     )
+                },
+                onDeleteAccount = {
+                    deleteAccountAndData(
+                        context = context,
+                        credentialManager = credentialManager,
+                        scope = scope,
+                        deleteUserData = { viewModel.deleteAllUserData() },
+                        onAccountDeleted = {},
+                        onError = { msg -> viewModel.showMessage(msg) }
+                    )
                 }
             )
         }
@@ -203,7 +227,8 @@ private fun MainStoreScaffold(
     viewModel: StoreViewModel,
     userDisplayName: String,
     userEmail: String,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -395,6 +420,10 @@ private fun MainStoreScaffold(
                             onDeleteAddress = viewModel::deleteAddress,
                             onBrowseShop = { navigateToTab(StoreRoutes.ROUTE_SHOP) },
                             onSignOut = onSignOut,
+                            onDeleteAccount = onDeleteAccount,
+                            onOpenPrivacyPolicy = {
+                                navController.navigate(StoreRoutes.ROUTE_PRIVACY_POLICY)
+                            },
                             contentPadding = PaddingValues(
                                 top = innerPadding.calculateTopPadding(),
                                 bottom = innerPadding.calculateBottomPadding()
@@ -428,14 +457,15 @@ private fun MainStoreScaffold(
                             giftNote = giftNote,
                             isBusy = isActionBusy,
                             defaultRecipientName = userDisplayName,
+                            userEmail = userEmail,
                             onBack = { navController.popBackStack() },
                             onSaveAddress = { name, phone, street, city, state, postal, label, preferred, onSaved ->
                                 viewModel.saveAddress(
                                     name, phone, street, city, state, postal, label, preferred, onSaved
                                 )
                             },
-                            onPlaceOrder = { items, address, payment, note, onOrderPlaced ->
-                                viewModel.placeOrder(items, address, payment, note) { orderNum ->
+                            onPlaceOrder = { items, address, payment, note, paymentRef, onOrderPlaced ->
+                                viewModel.placeOrder(items, address, payment, note, paymentRef) { orderNum ->
                                     giftNote = ""
                                     onOrderPlaced(orderNum)
                                 }
@@ -448,6 +478,12 @@ private fun MainStoreScaffold(
                                 navController.popBackStack(StoreRoutes.ROUTE_SHOP, inclusive = false)
                                 navigateToTab(StoreRoutes.ROUTE_SHOP)
                             }
+                        )
+                    }
+
+                    composable(StoreRoutes.ROUTE_PRIVACY_POLICY) {
+                        PrivacyPolicyScreen(
+                            onBack = { navController.popBackStack() }
                         )
                     }
                 }

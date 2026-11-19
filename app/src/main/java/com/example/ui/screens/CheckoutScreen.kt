@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material3.Button
@@ -52,9 +56,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -63,9 +70,25 @@ import com.example.data.catalog.KutchiCatalog
 import com.example.data.model.CartItem
 import com.example.data.model.PaymentMethod
 import com.example.data.model.ShippingAddress
+import com.example.data.payment.RazorpayCheckoutBridge
+import com.example.data.payment.RazorpayOutcome
+import com.example.data.payment.RazorpayPaymentGateway
 import com.example.data.repository.StoreRepository
 import com.example.ui.components.KutchiDiamondBorder
 import com.example.ui.state.UiState
+import kotlinx.coroutines.launch
+
+private data class PendingCheckoutSnapshot(
+    val cartItems: List<CartItem>,
+    val address: ShippingAddress,
+    val giftNote: String
+)
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +98,7 @@ fun CheckoutScreen(
     giftNote: String,
     isBusy: Boolean,
     defaultRecipientName: String,
+    userEmail: String,
     onBack: () -> Unit,
     onSaveAddress: (
         recipientName: String,
@@ -92,16 +116,29 @@ fun CheckoutScreen(
         address: ShippingAddress,
         paymentMethod: PaymentMethod,
         giftNote: String,
+        paymentReference: String,
         onOrderPlaced: (String) -> Unit
     ) -> Unit,
     onViewOrders: () -> Unit,
     onContinueShopping: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val razorpayReady = remember { RazorpayPaymentGateway.isFullyConfigured() }
+
     var selectedAddressId by remember { mutableStateOf<String?>(null) }
     var showAddressForm by remember { mutableStateOf(false) }
-    var selectedPayment by remember { mutableStateOf(PaymentMethod.UPI_COLLECT) }
+    var selectedPayment by remember {
+        mutableStateOf(
+            if (razorpayReady) PaymentMethod.RAZORPAY_ONLINE else PaymentMethod.UPI_COLLECT
+        )
+    }
     var placedOrderNumber by remember { mutableStateOf<String?>(null) }
+    var isGatewayBusy by remember { mutableStateOf(false) }
+    var gatewayError by remember { mutableStateOf<String?>(null) }
+    var pendingRazorpayOrderId by remember { mutableStateOf<String?>(null) }
+    var pendingSnapshot by remember { mutableStateOf<PendingCheckoutSnapshot?>(null) }
 
     // Form fields
     var recipientName by remember(defaultRecipientName) { mutableStateOf(defaultRecipientName) }
@@ -120,6 +157,53 @@ fun CheckoutScreen(
         }
         if (addresses.isEmpty() && addressesState is UiState.Success) {
             showAddressForm = true
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        RazorpayCheckoutBridge.outcomes.collect { outcome ->
+            when (outcome) {
+                is RazorpayOutcome.Success -> {
+                    val snapshot = pendingSnapshot
+                    val orderId = outcome.orderId ?: pendingRazorpayOrderId ?: ""
+                    val signature = outcome.signature ?: ""
+                    if (snapshot == null || orderId.isBlank() || signature.isBlank()) {
+                        isGatewayBusy = false
+                        gatewayError = "Incomplete payment verification details received from Razorpay."
+                    } else {
+                        val verifyResult = RazorpayPaymentGateway.verifyPaymentSignature(
+                            orderId = orderId,
+                            paymentId = outcome.paymentId,
+                            signature = signature
+                        )
+                        isGatewayBusy = false
+                        verifyResult.onSuccess { verified ->
+                            if (verified) {
+                                gatewayError = null
+                                onPlaceOrder(
+                                    snapshot.cartItems,
+                                    snapshot.address,
+                                    PaymentMethod.RAZORPAY_ONLINE,
+                                    snapshot.giftNote,
+                                    outcome.paymentId
+                                ) { orderNum ->
+                                    pendingSnapshot = null
+                                    pendingRazorpayOrderId = null
+                                    placedOrderNumber = orderNum
+                                }
+                            } else {
+                                gatewayError = "Payment signature could not be verified by backend."
+                            }
+                        }.onFailure { err ->
+                            gatewayError = err.message ?: "Unable to verify Razorpay payment."
+                        }
+                    }
+                }
+                is RazorpayOutcome.Error -> {
+                    isGatewayBusy = false
+                    gatewayError = outcome.message
+                }
+            }
         }
     }
 
@@ -177,6 +261,7 @@ fun CheckoutScreen(
                     tonalElevation = 6.dp,
                     shadowElevation = 8.dp
                 ) {
+                    val totalBusy = isBusy || isGatewayBusy
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -185,25 +270,64 @@ fun CheckoutScreen(
                     ) {
                         Button(
                             onClick = {
-                                if (selectedAddress != null) {
+                                if (selectedAddress == null) return@Button
+                                gatewayError = null
+                                if (selectedPayment == PaymentMethod.RAZORPAY_ONLINE) {
+                                    val activity = context.findActivity()
+                                    if (activity == null) {
+                                        gatewayError = "Unable to access host activity for Razorpay checkout."
+                                        return@Button
+                                    }
+                                    isGatewayBusy = true
+                                    val snapshot = PendingCheckoutSnapshot(
+                                        cartItems = cartItems,
+                                        address = selectedAddress,
+                                        giftNote = giftNote
+                                    )
+                                    pendingSnapshot = snapshot
+                                    coroutineScope.launch {
+                                        val receipt = "bb_${System.currentTimeMillis()}"
+                                        val orderResult = RazorpayPaymentGateway.createServerOrderId(total, receipt)
+                                        orderResult.onSuccess { serverOrderId ->
+                                            pendingRazorpayOrderId = serverOrderId
+                                            val launchResult = RazorpayPaymentGateway.launchCheckout(
+                                                activity = activity,
+                                                amountInr = total,
+                                                customerName = selectedAddress.recipientName,
+                                                customerEmail = userEmail,
+                                                customerPhone = selectedAddress.phone,
+                                                razorpayOrderId = serverOrderId
+                                            )
+                                            launchResult.onFailure { err ->
+                                                isGatewayBusy = false
+                                                gatewayError = err.message ?: "Failed to open Razorpay checkout."
+                                            }
+                                        }.onFailure { err ->
+                                            isGatewayBusy = false
+                                            gatewayError = err.message ?: "Could not create Razorpay order on backend."
+                                        }
+                                    }
+                                } else {
                                     onPlaceOrder(
                                         cartItems,
                                         selectedAddress,
                                         selectedPayment,
-                                        giftNote
+                                        giftNote,
+                                        ""
                                     ) { orderNum ->
                                         placedOrderNumber = orderNum
                                     }
                                 }
                             },
-                            enabled = selectedAddress != null && !isBusy && !showAddressForm,
+                            enabled = selectedAddress != null && !totalBusy && !showAddressForm &&
+                                (selectedPayment != PaymentMethod.RAZORPAY_ONLINE || razorpayReady),
                             shape = MaterialTheme.shapes.medium,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(54.dp)
                                 .testTag("place_order_button")
                         ) {
-                            if (isBusy) {
+                            if (totalBusy) {
                                 CircularProgressIndicator(
                                     color = MaterialTheme.colorScheme.onPrimary,
                                     strokeWidth = 2.dp,
@@ -211,10 +335,11 @@ fun CheckoutScreen(
                                 )
                             } else {
                                 Text(
-                                    text = if (selectedAddress == null) {
-                                        "Save Delivery Address to Continue"
-                                    } else {
-                                        "Place Order · ${KutchiCatalog.formatInr(total)}"
+                                    text = when {
+                                        selectedAddress == null -> "Save Delivery Address to Continue"
+                                        selectedPayment == PaymentMethod.RAZORPAY_ONLINE ->
+                                            "Pay & Place Order · ${KutchiCatalog.formatInr(total)}"
+                                        else -> "Place Order · ${KutchiCatalog.formatInr(total)}"
                                     },
                                     style = MaterialTheme.typography.labelLarge
                                 )
@@ -386,7 +511,39 @@ fun CheckoutScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
+                if (!gatewayError.isNullOrBlank()) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ErrorOutline,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = gatewayError.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+
                 PaymentMethod.entries.forEach { method ->
+                    val isRazorpay = method == PaymentMethod.RAZORPAY_ONLINE
+                    val optionEnabled = !isRazorpay || razorpayReady
                     val selected = method == selectedPayment
                     Card(
                         colors = CardDefaults.cardColors(
@@ -408,7 +565,17 @@ fun CheckoutScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
-                            .clickable { selectedPayment = method }
+                            .alpha(if (optionEnabled) 1f else 0.65f)
+                            .then(
+                                if (optionEnabled) {
+                                    Modifier.clickable {
+                                        gatewayError = null
+                                        selectedPayment = method
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            )
                             .testTag("payment_${method.raw}")
                     ) {
                         Row(
@@ -417,7 +584,13 @@ fun CheckoutScreen(
                         ) {
                             RadioButton(
                                 selected = selected,
-                                onClick = { selectedPayment = method }
+                                enabled = optionEnabled,
+                                onClick = if (optionEnabled) {
+                                    {
+                                        gatewayError = null
+                                        selectedPayment = method
+                                    }
+                                } else null
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(
@@ -427,16 +600,24 @@ fun CheckoutScreen(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = method.displayLabel,
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = method.subtitle,
+                                    text = if (isRazorpay && !razorpayReady) {
+                                        "Configure RAZORPAY_KEY_ID & PAYMENT_BACKEND_URL in AI Studio Secrets to enable online payment"
+                                    } else {
+                                        method.subtitle
+                                    },
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = if (isRazorpay && !razorpayReady) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
                                 )
                             }
                         }

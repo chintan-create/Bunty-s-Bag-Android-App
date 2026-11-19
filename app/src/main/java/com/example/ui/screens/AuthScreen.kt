@@ -25,12 +25,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Handyman
 import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +46,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,6 +60,15 @@ fun AuthScreen(
     modifier: Modifier = Modifier
 ) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showPrivacyPolicy by remember { mutableStateOf(false) }
+
+    if (showPrivacyPolicy) {
+        PrivacyPolicyScreen(
+            onBack = { showPrivacyPolicy = false },
+            modifier = modifier
+        )
+        return
+    }
 
     Box(
         modifier = modifier
@@ -184,11 +197,26 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = "Secure sign-in keeps your shopping bag, wishlist, and Kutchi order history synced across devices.",
+                    text = "New to Bunty's Bag? Signing in with Google automatically creates your patron account and syncs your bag, wishlist, and orders. You can delete your account and all data anytime from your Profile.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(
+                    onClick = { showPrivacyPolicy = true },
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .testTag("auth_privacy_policy_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.PrivacyTip,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Privacy Policy & Data Practices")
+                }
+                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }

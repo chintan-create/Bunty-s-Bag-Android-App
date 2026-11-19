@@ -165,6 +165,86 @@ fun signOutUser(
     }
 }
 
+fun deleteAccountAndData(
+    context: Context,
+    credentialManager: CredentialManager,
+    scope: CoroutineScope,
+    deleteUserData: suspend () -> Result<Unit>,
+    onAccountDeleted: () -> Unit,
+    onError: (String) -> Unit
+) {
+    val user = Firebase.auth.currentUser
+    if (user == null) {
+        onError("No active signed-in account found.")
+        return
+    }
+
+    scope.launch {
+        try {
+            val lastSignIn = user.metadata?.lastSignInTimestamp ?: 0L
+            val sessionAgeMs = System.currentTimeMillis() - lastSignIn
+            if (lastSignIn == 0L || sessionAgeMs > 4 * 60 * 1000L) {
+                val clientId = context.getString(R.string.default_web_client_id)
+                val signInOption = GetSignInWithGoogleOption.Builder(serverClientId = clientId).build()
+                val request = GetCredentialRequest.Builder().addCredentialOption(signInOption).build()
+                val activity = context as? Activity
+                    ?: throw IllegalStateException("Re-authentication requires an Activity context.")
+                val cred = credentialManager.getCredential(activity, request).credential
+                if (cred is CustomCredential && cred.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                    val token = GoogleIdTokenCredential.createFrom(cred.data).idToken
+                    user.reauthenticate(GoogleAuthProvider.getCredential(token, null)).await()
+                } else {
+                    onError("Unable to verify Google account before deletion.")
+                    return@launch
+                }
+            }
+
+            val dataResult = deleteUserData()
+            if (dataResult.isFailure) {
+                onError(dataResult.exceptionOrNull()?.localizedMessage ?: "Failed to erase stored user data.")
+                return@launch
+            }
+
+            try {
+                user.delete().await()
+            } catch (e: com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+                Log.w(TAG, "Recent login required for account deletion; re-authenticating", e)
+                val clientId = context.getString(R.string.default_web_client_id)
+                val signInOption = GetSignInWithGoogleOption.Builder(serverClientId = clientId).build()
+                val request = GetCredentialRequest.Builder().addCredentialOption(signInOption).build()
+                val activity = context as? Activity
+                    ?: throw IllegalStateException("Re-authentication requires an Activity context.")
+                val cred = credentialManager.getCredential(activity, request).credential
+                if (cred is CustomCredential && cred.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                    val token = GoogleIdTokenCredential.createFrom(cred.data).idToken
+                    user.reauthenticate(GoogleAuthProvider.getCredential(token, null)).await()
+                    user.delete().await()
+                } else {
+                    onError("Unable to verify Google account.")
+                    return@launch
+                }
+            }
+
+            withContext(NonCancellable) {
+                try {
+                    credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to clear credential state after deletion: ${e.message}")
+                } finally {
+                    Firebase.auth.signOut()
+                }
+            }
+            onAccountDeleted()
+        } catch (e: GetCredentialCancellationException) {
+            Log.w(TAG, "Account deletion re-auth cancelled: ${e.message}", e)
+            onError("Account verification cancelled. Account was not deleted.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Account deletion failed", e)
+            onError(e.localizedMessage ?: "Could not delete account. Please try again.")
+        }
+    }
+}
+
 @Composable
 fun GoogleSignInButton(
     onAuthSuccess: () -> Unit,
@@ -223,7 +303,7 @@ fun GoogleSignInButton(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "Sign in with Google",
+                    text = "Sign in or Create Account with Google",
                     style = MaterialTheme.typography.labelLarge
                 )
             }

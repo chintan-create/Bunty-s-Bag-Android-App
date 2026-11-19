@@ -22,12 +22,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AddLocationAlt
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -89,10 +93,13 @@ fun OrdersProfileScreen(
     onDeleteAddress: (String) -> Unit,
     onBrowseShop: () -> Unit,
     onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
     var showAddAddressDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         contentPadding = PaddingValues(
@@ -359,6 +366,80 @@ fun OrdersProfileScreen(
                 }
             }
         }
+
+        // Account Management & Privacy Section
+        item(key = "account_privacy_section") {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                KutchiDiamondBorder()
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Account & Privacy",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(14.dp)
+                    ) {
+                        Text(
+                            text = "Account created & synced via Google Sign-In. You can review our data practices or permanently delete your account and all stored addresses, wishlist, bag, and orders.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedButton(
+                                onClick = onOpenPrivacyPolicy,
+                                shape = MaterialTheme.shapes.small,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .minimumInteractiveComponentSize()
+                                    .testTag("privacy_notice_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.PrivacyTip,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Privacy Policy", style = MaterialTheme.typography.labelMedium)
+                            }
+
+                            OutlinedButton(
+                                onClick = { showDeleteAccountDialog = true },
+                                enabled = !isBusy,
+                                shape = MaterialTheme.shapes.small,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .minimumInteractiveComponentSize()
+                                    .testTag("delete_account_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.DeleteForever,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Delete Account",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     if (showAddAddressDialog) {
@@ -369,6 +450,43 @@ fun OrdersProfileScreen(
             onSave = { name, phone, street, city, state, postal, label ->
                 onSaveAddress(name, phone, street, city, state, postal, label, false)
                 showAddAddressDialog = false
+            }
+        )
+    }
+
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isBusy) showDeleteAccountDialog = false },
+            title = { Text("Delete Account & Data?") },
+            text = {
+                Text(
+                    text = "This will permanently erase your Bunty's Bag account along with your shopping bag, saved crafts, delivery addresses, and order history. This action cannot be undone.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteAccountDialog = false
+                        onDeleteAccount()
+                    },
+                    enabled = !isBusy,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
+                    modifier = Modifier.testTag("confirm_delete_account_button")
+                ) {
+                    Text("Delete Permanently")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteAccountDialog = false },
+                    enabled = !isBusy
+                ) {
+                    Text("Keep Account")
+                }
             }
         )
     }
@@ -487,6 +605,14 @@ private fun OrderCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (order.paymentReference.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Payment ID: ${order.paymentReference}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
                     if (order.giftNote.isNotBlank()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(

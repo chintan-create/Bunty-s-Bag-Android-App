@@ -260,6 +260,7 @@ class StoreViewModel(
         address: ShippingAddress,
         paymentMethod: PaymentMethod,
         giftNote: String,
+        paymentReference: String = "",
         onOrderPlaced: (String) -> Unit
     ) {
         viewModelScope.launch {
@@ -269,7 +270,8 @@ class StoreViewModel(
                 cartItems = cartItems,
                 address = address,
                 paymentMethod = paymentMethod,
-                giftNote = giftNote
+                giftNote = giftNote,
+                paymentReference = paymentReference
             )
             _isActionBusy.value = false
             result.fold(
@@ -305,6 +307,17 @@ class StoreViewModel(
                 _events.tryEmit(err.localizedMessage ?: "Unable to load order items")
             }
         }
+    }
+
+    suspend fun deleteAllUserData(): Result<Unit> {
+        _isActionBusy.value = true
+        val result = repository.deleteAllUserData(currentUserId)
+        _isActionBusy.value = false
+        return result
+    }
+
+    fun showMessage(message: String) {
+        _events.tryEmit(message)
     }
 
     private companion object {

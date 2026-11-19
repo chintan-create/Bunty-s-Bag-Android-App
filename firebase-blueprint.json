@@ -90,9 +90,10 @@
         },
         "paymentMethod": {
           "type": "string",
-          "enum": ["cod", "upi_collect", "card_on_delivery"],
+          "enum": ["cod", "upi_collect", "card_on_delivery", "razorpay_online"],
           "description": "Selected payment method"
         },
+        "paymentReference": { "type": "string", "description": "Razorpay payment ID for online payments or empty string" },
         "recipientName": { "type": "string", "description": "Recipient full name" },
         "phone": { "type": "string", "description": "Delivery contact phone" },
         "shippingSummary": { "type": "string", "description": "Formatted delivery address" },

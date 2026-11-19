@@ -149,6 +149,7 @@ test("Orders: atomic batch creation with line items, cancel transition, and term
     orderNumber: "BB-104829",
     status: "placed",
     paymentMethod: "upi_collect",
+    paymentReference: "",
     recipientName: "Asha Jadeja",
     phone: "+91 98250 12345",
     shippingSummary: "14 Bhujodi Craft Lane, Bhuj, Gujarat 370001",
@@ -196,4 +197,10 @@ test("Orders: atomic batch creation with line items, cancel transition, and term
       updatedAt: new Date(Date.now() - 500),
     })
   );
+
+  // Owner can delete line items and order during account deletion; Bob cannot
+  const bobDb = testEnv.authenticatedContext(BOB_UID).firestore();
+  await assertFails(bobDb.collection(`users/${ALICE_UID}/orders`).doc("order_101").delete());
+  await assertSucceeds(itemRef.delete());
+  await assertSucceeds(orderRef.delete());
 });

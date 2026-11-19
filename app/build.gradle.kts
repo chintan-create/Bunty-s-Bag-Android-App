@@ -16,8 +16,8 @@ android {
     applicationId = "com.aistudio.buntysbag.kmxqvp"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = 2
+    versionName = "2.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -106,22 +106,23 @@ dependencies {
   // implementation(libs.androidx.room.ktx)
   // implementation(libs.androidx.room.runtime)
   // implementation(libs.coil.compose)
-  // implementation(libs.converter.moshi)
+  implementation(libs.converter.moshi)
   // implementation(libs.firebase.ai)
   implementation(libs.firebase.firestore)
   implementation(libs.firebase.auth)
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services)
   implementation(libs.googleid)
+  implementation(libs.razorpay.checkout)
   // implementation(libs.firebase.appcheck.recaptcha)
   // implementation(libs.firebase.appcheck.debug)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
-  // implementation(libs.logging.interceptor)
-  // implementation(libs.moshi.kotlin)
-  // implementation(libs.okhttp)
+  implementation(libs.logging.interceptor)
+  implementation(libs.moshi.kotlin)
+  implementation(libs.okhttp)
   // implementation(libs.play.services.location)
-  // implementation(libs.retrofit)
+  implementation(libs.retrofit)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

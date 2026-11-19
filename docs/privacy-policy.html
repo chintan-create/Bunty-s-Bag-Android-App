@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Bunty's Bag</title>
+  <style>
+    :root {
+      --bg: #fcf8f4;
+      --surface: #ffffff;
+      --primary: #8b2635;
+      --secondary: #1e5f74;
+      --text: #241917;
+      --muted: #5f4e4a;
+      --border: #e6dad2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+    header {
+      background: linear-gradient(135deg, #8b2635, #691925);
+      color: #ffffff;
+      padding: 2.5rem 1.25rem;
+      text-align: center;
+    }
+    header h1 {
+      margin: 0 0 0.4rem;
+      font-size: 1.9rem;
+      letter-spacing: 0.01em;
+    }
+    header p {
+      margin: 0;
+      opacity: 0.92;
+      font-size: 0.95rem;
+    }
+    main {
+      max-width: 820px;
+      margin: 1.75rem auto 3rem;
+      padding: 0 1.25rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.4rem 1.5rem;
+      margin-bottom: 1.1rem;
+      box-shadow: 0 2px 8px rgba(36, 25, 23, 0.04);
+    }
+    h2 {
+      margin-top: 0;
+      margin-bottom: 0.6rem;
+      font-size: 1.15rem;
+      color: var(--primary);
+    }
+    ul {
+      margin: 0.4rem 0 0.4rem 1.2rem;
+      padding: 0;
+    }
+    li { margin-bottom: 0.4rem; }
+    .meta {
+      display: inline-block;
+      background: #f5ebe4;
+      color: var(--primary);
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+    a { color: var(--secondary); font-weight: 600; }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 1rem 1.25rem 2.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Privacy Policy — Bunty's Bag</h1>
+    <p>Traditional Handmade Kutchi Crafts Store · Package: com.aistudio.buntysbag.kmxqvp</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <span class="meta">Effective Date: November 19, 2026</span>
+      <h2>1. Overview</h2>
+      <p>
+        Bunty's Bag ("we", "our", or "the App") respects your privacy and is committed to protecting
+        your personal data. This Privacy Policy explains what information the Bunty's Bag Android
+        application collects, how it is used and stored, with whom it is shared, and how you can
+        permanently delete your account and data in compliance with Google Play policies.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>2. Information We Collect</h2>
+      <ul>
+        <li>
+          <strong>Account &amp; Identity Data (Google Sign-In):</strong> When you sign in with Google,
+          we receive your Google display name, email address, and unique Firebase User ID to create
+          and authenticate your patron account.
+        </li>
+        <li>
+          <strong>Delivery &amp; Contact Information:</strong> Recipient name, phone number, street address,
+          city, state, postal code, and optional address label (e.g., Home/Work) that you enter for
+          order fulfillment and shipping.
+        </li>
+        <li>
+          <strong>Shopping Activity &amp; Orders:</strong> Items in your shopping bag, saved wishlist crafts,
+          gift notes, order totals, order status, and selected payment method.
+        </li>
+        <li>
+          <strong>Payment Reference Data:</strong> If you choose online payment (Razorpay), checkout is
+          handled by the Razorpay SDK and verified with our payment backend. Bunty's Bag does not
+          collect or store your full card number, CVV, bank credentials, or UPI PIN—only the
+          transaction reference ID (<code>paymentReference</code>) and verification status.
+        </li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>3. How We Use Your Information</h2>
+      <ul>
+        <li>To authenticate your account and sync your bag, wishlist, and addresses across sessions.</li>
+        <li>To process, pack, ship, and display the status of your Kutchi craft orders.</li>
+        <li>To verify online payments and prevent duplicate or fraudulent transactions.</li>
+        <li>To respond to customer support or account-deletion requests.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>4. Third-Party Services &amp; Data Sharing</h2>
+      <p>
+        We do <strong>not</strong> sell your personal data, and the App contains <strong>no ads</strong>
+        and <strong>no third-party advertising trackers</strong>. Data is shared only with essential
+        infrastructure providers required for core app functionality:
+      </p>
+      <ul>
+        <li>
+          <strong>Google Firebase (Authentication &amp; Cloud Firestore):</strong> Provides Google Sign-In
+          authentication and encrypted cloud database storage isolated to your user account.
+        </li>
+        <li>
+          <strong>Razorpay Checkout SDK (when online payment is enabled &amp; selected):</strong>
+          Processes UPI, card, netbanking, and wallet transactions securely under Razorpay's privacy
+          and PCI-DSS standards.
+        </li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>5. Data Security &amp; Encryption</h2>
+      <p>
+        All network communication between the App, Firebase, and payment verification endpoints is
+        encrypted in transit using HTTPS/TLS. Cloud Firestore access is protected by strict
+        authenticated owner-only security rules so only your signed-in account can read or modify
+        your addresses, bag, wishlist, and orders.
+      </p>
+    </section>
+
+    <section class="card" id="account-deletion">
+      <h2>6. Data Retention &amp; Account Deletion</h2>
+      <p>
+        We retain your account and order records only while your account remains active. You may
+        permanently delete your account and all associated cloud data at any time:
+      </p>
+      <ul>
+        <li>
+          <strong>In-App Self-Service Deletion:</strong> Open <em>Bunty's Bag → Orders tab →
+          Account &amp; Privacy → Delete Account → Delete Permanently</em>. This erases your
+          shopping bag, wishlist, saved addresses, order history, and Firebase Authentication account.
+        </li>
+        <li>
+          <strong>Email Deletion Request:</strong> If you no longer have access to the App, email
+          <a href="mailto:cjpania@gmail.com?subject=Bunty's%20Bag%20Account%20Deletion%20Request">cjpania@gmail.com</a>
+          from your registered Google email address to request deletion within 7 business days.
+        </li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>7. Children's Privacy</h2>
+      <p>
+        Bunty's Bag is a retail e-commerce application intended for adults and general shoppers (13+
+        with guardian supervision where required). We do not knowingly collect personal information
+        from children under 13. If you believe a child has provided personal data, please contact us
+        so we can delete it promptly.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>8. Changes &amp; Contact Information</h2>
+      <p>
+        We may update this Privacy Policy from time to time to reflect app updates or regulatory
+        requirements. Any updates will be published on this page with an updated effective date.
+      </p>
+      <p>
+        <strong>Developer Contact:</strong> Bunty's Bag Support<br />
+        <strong>Email:</strong> <a href="mailto:cjpania@gmail.com">cjpania@gmail.com</a>
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    &copy; 2026 Bunty's Bag · Handcrafted Kutchi Heritage Store
+  </footer>
+</body>
+</html>

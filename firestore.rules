@@ -66,7 +66,8 @@ service cloud.firestore {
     function isValidOrder(data) {
       return data.orderNumber is string && data.orderNumber.size() >= 4 && data.orderNumber.size() <= 24 &&
              data.status in ['placed', 'packing', 'shipped', 'delivered', 'cancelled'] &&
-             data.paymentMethod in ['cod', 'upi_collect', 'card_on_delivery'] &&
+             data.paymentMethod in ['cod', 'upi_collect', 'card_on_delivery', 'razorpay_online'] &&
+             (!('paymentReference' in data) || (data.paymentReference is string && data.paymentReference.size() <= 100)) &&
              data.recipientName is string && data.recipientName.size() >= 2 && data.recipientName.size() <= 80 &&
              data.phone is string && data.phone.size() >= 7 && data.phone.size() <= 20 &&
              data.shippingSummary is string && data.shippingSummary.size() >= 5 && data.shippingSummary.size() <= 240 &&
@@ -181,7 +182,7 @@ service cloud.firestore {
                          'previewDrawableKey', 'createdAt', 'updatedAt'
                        ]) &&
                        incoming().keys().hasOnly([
-                         'orderNumber', 'status', 'paymentMethod', 'recipientName',
+                         'orderNumber', 'status', 'paymentMethod', 'paymentReference', 'recipientName',
                          'phone', 'shippingSummary', 'giftNote', 'subtotalInr',
                          'shippingInr', 'totalInr', 'itemCount', 'previewTitle',
                          'previewDrawableKey', 'createdAt', 'updatedAt'
@@ -199,7 +200,7 @@ service cloud.firestore {
                        incoming().createdAt == existing().createdAt &&
                        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
 
-      allow delete: if false;
+      allow delete: if isOwner(userId) && isValidId(orderId);
 
       // Order Line Items (Atomic creation alongside parent Order)
       match /items/{itemId} {
@@ -220,7 +221,8 @@ service cloud.firestore {
                          isValidOrderLineItem(incoming()) &&
                          existsAfter(/databases/$(database)/documents/users/$(userId)/orders/$(orderId));
 
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(orderId) && isValidId(itemId);
       }
     }
   }

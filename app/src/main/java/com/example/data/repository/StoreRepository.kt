@@ -391,7 +391,8 @@ class StoreRepository(
         cartItems: List<CartItem>,
         address: ShippingAddress,
         paymentMethod: PaymentMethod,
-        giftNote: String
+        giftNote: String,
+        paymentReference: String = ""
     ): Result<String> {
         val path = "users/$userId/orders"
         return try {
@@ -413,6 +414,7 @@ class StoreRepository(
                 "orderNumber" to orderNumber,
                 "status" to OrderStatus.PLACED.raw,
                 "paymentMethod" to paymentMethod.raw,
+                "paymentReference" to paymentReference.trim().take(100),
                 "recipientName" to address.recipientName.take(80),
                 "phone" to address.phone.take(20),
                 "shippingSummary" to summary,
@@ -478,6 +480,43 @@ class StoreRepository(
             throw e
         } catch (e: Exception) {
             handleFirestoreError(e, OperationType.UPDATE, path)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteAllUserData(userId: String): Result<Unit> {
+        val path = "users/$userId"
+        return try {
+            val uid = requireActiveUserId(userId)
+            val userDoc = db.collection("users").document(uid)
+            val refsToDelete = mutableListOf<com.google.firebase.firestore.DocumentReference>()
+
+            val cartDocs = userDoc.collection("cart").get().await()
+            cartDocs.documents.forEach { refsToDelete.add(it.reference) }
+
+            val wishlistDocs = userDoc.collection("wishlist").get().await()
+            wishlistDocs.documents.forEach { refsToDelete.add(it.reference) }
+
+            val addressDocs = userDoc.collection("addresses").get().await()
+            addressDocs.documents.forEach { refsToDelete.add(it.reference) }
+
+            val orderDocs = userDoc.collection("orders").get().await()
+            for (orderDoc in orderDocs.documents) {
+                val itemDocs = orderDoc.reference.collection("items").get().await()
+                itemDocs.documents.forEach { refsToDelete.add(it.reference) }
+                refsToDelete.add(orderDoc.reference)
+            }
+
+            refsToDelete.chunked(400).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { ref -> batch.delete(ref) }
+                batch.commit().await()
+            }
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.DELETE, path)
             Result.failure(e)
         }
     }

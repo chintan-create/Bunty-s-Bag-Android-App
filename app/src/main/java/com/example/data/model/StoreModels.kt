@@ -100,6 +100,7 @@ enum class OrderStatus(val raw: String, val displayLabel: String) {
 }
 
 enum class PaymentMethod(val raw: String, val displayLabel: String, val subtitle: String) {
+    RAZORPAY_ONLINE("razorpay_online", "Pay Online (Razorpay)", "UPI, Cards, Netbanking & Wallets"),
     UPI_COLLECT("upi_collect", "UPI on Dispatch", "Pay via any UPI app once artisans confirm"),
     COD("cod", "Cash on Delivery", "Pay in cash upon doorstep arrival"),
     CARD_ON_DELIVERY("card_on_delivery", "Card on Delivery", "Tap or swipe card with our courier");
@@ -117,6 +118,7 @@ data class Order(
     val orderNumber: String = "",
     val status: String = OrderStatus.PLACED.raw,
     val paymentMethod: String = PaymentMethod.UPI_COLLECT.raw,
+    val paymentReference: String = "",
     val recipientName: String = "",
     val phone: String = "",
     val shippingSummary: String = "",
