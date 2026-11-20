@@ -1,3 +1,6 @@
+# Skip slow multi-pass bytecode optimization while keeping shrinking, obfuscation, and mapping.txt
+-dontoptimize
+
 # Keep source file & line numbers for readable stack traces in Play Console
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
