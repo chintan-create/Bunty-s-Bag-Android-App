@@ -5,20 +5,30 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AddLocationAlt
@@ -52,6 +62,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +82,7 @@ import com.google.firebase.Timestamp
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OrdersProfileScreen(
     userDisplayName: String,
@@ -100,13 +113,16 @@ fun OrdersProfileScreen(
 ) {
     var showAddAddressDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    val layoutDirection = LocalLayoutDirection.current
+    val fontScale = LocalDensity.current.fontScale
 
     LazyColumn(
+        horizontalAlignment = Alignment.CenterHorizontally,
         contentPadding = PaddingValues(
-            top = contentPadding.calculateTopPadding() + 10.dp,
+            top = contentPadding.calculateTopPadding() + 12.dp,
             bottom = contentPadding.calculateBottomPadding() + 28.dp,
-            start = 16.dp,
-            end = 16.dp
+            start = contentPadding.calculateStartPadding(layoutDirection) + 16.dp,
+            end = contentPadding.calculateEndPadding(layoutDirection) + 16.dp
         ),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = modifier
@@ -120,12 +136,12 @@ fun OrdersProfileScreen(
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .widthIn(max = 760.dp)
+                    .fillMaxWidth()
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(16.dp)
-                ) {
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    val stackSignOut = maxWidth < 340.dp || fontScale > 1.25f
                     val initials = userDisplayName.trim()
                         .split(" ")
                         .filter { it.isNotEmpty() }
@@ -133,54 +149,89 @@ fun OrdersProfileScreen(
                         .joinToString("") { it.first().uppercase() }
                         .ifEmpty { "BB" }
 
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        shape = CircleShape,
-                        modifier = Modifier.size(52.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = initials,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                shape = CircleShape,
+                                modifier = Modifier.size(52.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = initials,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = userDisplayName.ifBlank { "Kutchi Patron" },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (userEmail.isNotBlank()) {
+                                    Text(
+                                        text = userEmail,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            if (!stackSignOut) {
+                                Spacer(modifier = Modifier.width(10.dp))
+                                OutlinedButton(
+                                    onClick = onSignOut,
+                                    shape = RoundedCornerShape(50),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier
+                                        .minimumInteractiveComponentSize()
+                                        .testTag("sign_out_button")
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                                        contentDescription = "Sign out",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Sign Out",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
                         }
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = userDisplayName.ifBlank { "Kutchi Patron" },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (userEmail.isNotBlank()) {
-                            Text(
-                                text = userEmail,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+
+                        if (stackSignOut) {
+                            OutlinedButton(
+                                onClick = onSignOut,
+                                shape = RoundedCornerShape(50),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .minimumInteractiveComponentSize()
+                                    .testTag("sign_out_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                                    contentDescription = "Sign out",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Sign Out", style = MaterialTheme.typography.labelMedium)
+                            }
                         }
-                    }
-                    OutlinedButton(
-                        onClick = onSignOut,
-                        shape = RoundedCornerShape(50),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        modifier = Modifier
-                            .minimumInteractiveComponentSize()
-                            .testTag("sign_out_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Sign out",
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sign Out", style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -188,7 +239,11 @@ fun OrdersProfileScreen(
 
         // Saved Addresses Section
         item(key = "addresses_section") {
-            Column {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 760.dp)
+                    .fillMaxWidth()
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -196,11 +251,15 @@ fun OrdersProfileScreen(
                 ) {
                     Text(
                         text = "Saved Delivery Addresses",
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
                         onClick = { showAddAddressDialog = true },
-                        modifier = Modifier.testTag("profile_add_address_button")
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("profile_add_address_button")
                     ) {
                         Icon(
                             imageVector = Icons.Filled.AddLocationAlt,
@@ -307,7 +366,11 @@ fun OrdersProfileScreen(
         }
 
         item(key = "divider_orders") {
-            Column {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 760.dp)
+                    .fillMaxWidth()
+            ) {
                 KutchiDiamondBorder()
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
@@ -323,6 +386,7 @@ fun OrdersProfileScreen(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
+                            .widthIn(max = 760.dp)
                             .fillMaxWidth()
                             .padding(24.dp)
                     ) {
@@ -337,7 +401,8 @@ fun OrdersProfileScreen(
                         subtitle = ordersState.message,
                         icon = Icons.Outlined.Inventory2,
                         actionLabel = "Back to Shop",
-                        onAction = onBrowseShop
+                        onAction = onBrowseShop,
+                        modifier = Modifier.widthIn(max = 600.dp)
                     )
                 }
             }
@@ -350,7 +415,8 @@ fun OrdersProfileScreen(
                             subtitle = "When you place an order, you can track packaging from Bhuj and view receipts here.",
                             icon = Icons.Outlined.Inventory2,
                             actionLabel = "Shop Handmade Crafts",
-                            onAction = onBrowseShop
+                            onAction = onBrowseShop,
+                            modifier = Modifier.widthIn(max = 600.dp)
                         )
                     }
                 } else {
@@ -360,7 +426,8 @@ fun OrdersProfileScreen(
                             lineItems = orderItemsCache[order.id],
                             isBusy = isBusy,
                             onExpand = { onExpandOrder(order.id) },
-                            onCancel = { onCancelOrder(order.id) }
+                            onCancel = { onCancelOrder(order.id) },
+                            modifier = Modifier.widthIn(max = 760.dp)
                         )
                     }
                 }
@@ -369,7 +436,12 @@ fun OrdersProfileScreen(
 
         // Account Management & Privacy Section
         item(key = "account_privacy_section") {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .widthIn(max = 760.dp)
+                    .fillMaxWidth()
+            ) {
                 KutchiDiamondBorder()
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -392,48 +464,102 @@ fun OrdersProfileScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedButton(
-                                onClick = onOpenPrivacyPolicy,
-                                shape = MaterialTheme.shapes.small,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .minimumInteractiveComponentSize()
-                                    .testTag("privacy_notice_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.PrivacyTip,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Privacy Policy", style = MaterialTheme.typography.labelMedium)
-                            }
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                            val stackButtons = maxWidth < 330.dp || fontScale > 1.25f
+                            if (stackButtons) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = onOpenPrivacyPolicy,
+                                        shape = MaterialTheme.shapes.small,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = 48.dp)
+                                            .testTag("privacy_notice_button")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.PrivacyTip,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Privacy Policy", style = MaterialTheme.typography.labelMedium)
+                                    }
 
-                            OutlinedButton(
-                                onClick = { showDeleteAccountDialog = true },
-                                enabled = !isBusy,
-                                shape = MaterialTheme.shapes.small,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .minimumInteractiveComponentSize()
-                                    .testTag("delete_account_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.DeleteForever,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Delete Account",
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.labelMedium
-                                )
+                                    OutlinedButton(
+                                        onClick = { showDeleteAccountDialog = true },
+                                        enabled = !isBusy,
+                                        shape = MaterialTheme.shapes.small,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = 48.dp)
+                                            .testTag("delete_account_button")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.DeleteForever,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Delete Account",
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.labelMedium
+                                        )
+                                    }
+                                }
+                            } else {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    OutlinedButton(
+                                        onClick = onOpenPrivacyPolicy,
+                                        shape = MaterialTheme.shapes.small,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .heightIn(min = 48.dp)
+                                            .testTag("privacy_notice_button")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.PrivacyTip,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Privacy Policy",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = { showDeleteAccountDialog = true },
+                                        enabled = !isBusy,
+                                        shape = MaterialTheme.shapes.small,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .heightIn(min = 48.dp)
+                                            .testTag("delete_account_button")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.DeleteForever,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Delete Account",
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -498,7 +624,8 @@ private fun OrderCard(
     lineItems: List<OrderLineItem>?,
     isBusy: Boolean,
     onExpand: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     val status = OrderStatus.fromRaw(order.status)
@@ -513,7 +640,7 @@ private fun OrderCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable {
                 expanded = !expanded
@@ -527,7 +654,7 @@ private fun OrderCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = order.orderNumber,
                         style = MaterialTheme.typography.titleMedium,
@@ -539,6 +666,7 @@ private fun OrderCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
                 val (bgColor, fgColor) = when (status) {
                     OrderStatus.CANCELLED -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
                     OrderStatus.DELIVERED -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
@@ -693,7 +821,12 @@ private fun AddAddressDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Delivery Address") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
+            ) {
                 AddressEntryCard(
                     recipientName = name,
                     onRecipientNameChange = { name = it },

@@ -8,19 +8,26 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,6 +72,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.data.catalog.KutchiCatalog
 import com.example.data.model.CartItem
@@ -258,7 +266,9 @@ fun CheckoutScreen(
                 title = {
                     Text(
                         text = "Checkout",
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
@@ -274,6 +284,9 @@ fun CheckoutScreen(
                         )
                     }
                 },
+                windowInsets = WindowInsets.safeDrawing.only(
+                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                ),
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
@@ -287,12 +300,22 @@ fun CheckoutScreen(
                     shadowElevation = 8.dp
                 ) {
                     val totalBusy = isBusy || isGatewayBusy
-                    Column(
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .navigationBarsPadding()
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(
+                                    WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                                )
+                            )
                             .padding(horizontal = 16.dp, vertical = 12.dp)
                     ) {
+                        Column(
+                            modifier = Modifier
+                                .widthIn(max = 640.dp)
+                                .fillMaxWidth()
+                        ) {
                         Button(
                             onClick = {
                                 if (selectedAddress == null) return@Button
@@ -364,7 +387,7 @@ fun CheckoutScreen(
                             shape = MaterialTheme.shapes.medium,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(54.dp)
+                                .heightIn(min = 54.dp)
                                 .testTag("place_order_button")
                         ) {
                             if (totalBusy) {
@@ -385,6 +408,7 @@ fun CheckoutScreen(
                                 )
                             }
                         }
+                        }
                     }
                 }
             }
@@ -396,11 +420,16 @@ fun CheckoutScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
+                )
+                .imePadding()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            Column(modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
+            Column(modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth()) {
                 // Delivery Address Section
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -409,12 +438,16 @@ fun CheckoutScreen(
                 ) {
                     Text(
                         text = "1. Delivery Address",
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f)
                     )
                     if (addresses.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(8.dp))
                         TextButton(
                             onClick = { showAddressForm = !showAddressForm },
-                            modifier = Modifier.testTag("toggle_new_address_button")
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .testTag("toggle_new_address_button")
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.AddLocationAlt,
@@ -812,45 +845,89 @@ fun AddressEntryCard(
                     .fillMaxWidth()
                     .testTag("address_street_input")
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = city,
-                    onValueChange = { if (it.length <= 60) onCityChange(it) },
-                    label = { Text("City") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("address_city_input")
-                )
-                OutlinedTextField(
-                    value = stateName,
-                    onValueChange = { if (it.length <= 60) onStateNameChange(it) },
-                    label = { Text("State") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("address_state_input")
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = postalCode,
-                    onValueChange = { if (it.length <= 12) onPostalCodeChange(it) },
-                    label = { Text("PIN / Postal Code") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("address_postal_input")
-                )
-                OutlinedTextField(
-                    value = label,
-                    onValueChange = { if (it.length <= 30) onLabelChange(it) },
-                    label = { Text("Label (Home/Work)") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("address_label_input")
-                )
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val stackPair = maxWidth < 300.dp
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (stackPair) {
+                        OutlinedTextField(
+                            value = city,
+                            onValueChange = { if (it.length <= 60) onCityChange(it) },
+                            label = { Text("City") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("address_city_input")
+                        )
+                        OutlinedTextField(
+                            value = stateName,
+                            onValueChange = { if (it.length <= 60) onStateNameChange(it) },
+                            label = { Text("State") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("address_state_input")
+                        )
+                        OutlinedTextField(
+                            value = postalCode,
+                            onValueChange = { if (it.length <= 12) onPostalCodeChange(it) },
+                            label = { Text("PIN / Postal Code") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("address_postal_input")
+                        )
+                        OutlinedTextField(
+                            value = label,
+                            onValueChange = { if (it.length <= 30) onLabelChange(it) },
+                            label = { Text("Label (Home/Work)") },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("address_label_input")
+                        )
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedTextField(
+                                value = city,
+                                onValueChange = { if (it.length <= 60) onCityChange(it) },
+                                label = { Text("City", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("address_city_input")
+                            )
+                            OutlinedTextField(
+                                value = stateName,
+                                onValueChange = { if (it.length <= 60) onStateNameChange(it) },
+                                label = { Text("State", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("address_state_input")
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedTextField(
+                                value = postalCode,
+                                onValueChange = { if (it.length <= 12) onPostalCodeChange(it) },
+                                label = { Text("PIN Code", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("address_postal_input")
+                            )
+                            OutlinedTextField(
+                                value = label,
+                                onValueChange = { if (it.length <= 30) onLabelChange(it) },
+                                label = { Text("Label", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                singleLine = true,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("address_label_input")
+                            )
+                        }
+                    }
+                }
             }
 
             if (!formError.isNullOrBlank()) {
@@ -899,12 +976,14 @@ private fun OrderConfirmedView(
     onViewOrders: () -> Unit,
     onContinueShopping: () -> Unit
 ) {
-    Box(
-        contentAlignment = Alignment.Center,
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .navigationBarsPadding()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
         Column(
@@ -960,7 +1039,7 @@ private fun OrderConfirmedView(
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
+                    .heightIn(min = 52.dp)
                     .testTag("view_orders_after_checkout")
             ) {
                 Text("Track My Order")
@@ -971,7 +1050,7 @@ private fun OrderConfirmedView(
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
+                    .heightIn(min = 50.dp)
                     .testTag("continue_shopping_button")
             ) {
                 Text("Continue Browsing Bazaar")

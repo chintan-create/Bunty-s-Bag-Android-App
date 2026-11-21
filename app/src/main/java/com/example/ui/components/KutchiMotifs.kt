@@ -97,7 +97,9 @@ fun ProductArtwork(
     drawableKey: String,
     contentDescription: String,
     modifier: Modifier = Modifier,
-    badgeText: String? = null
+    badgeText: String? = null,
+    badgeAlignment: Alignment = Alignment.TopStart,
+    badgePadding: androidx.compose.ui.unit.Dp = 8.dp
 ) {
     Box(
         modifier = modifier
@@ -117,8 +119,8 @@ fun ProductArtwork(
                 shape = RoundedCornerShape(50),
                 shadowElevation = 2.dp,
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(8.dp)
+                    .align(badgeAlignment)
+                    .padding(badgePadding)
             ) {
                 Text(
                     text = badgeText,

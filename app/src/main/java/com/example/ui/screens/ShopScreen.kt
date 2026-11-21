@@ -7,16 +7,24 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -57,6 +65,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -74,6 +83,7 @@ import com.example.ui.components.EmptyBazaarState
 import com.example.ui.components.KutchiDiamondBorder
 import com.example.ui.components.ProductArtwork
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ShopScreen(
     products: List<KutchiProduct>,
@@ -91,40 +101,54 @@ fun ShopScreen(
     modifier: Modifier = Modifier
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
+    val layoutDirection = LocalLayoutDirection.current
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .imePadding()
     ) {
         val columnCount = when {
-            maxWidth >= 900.dp -> 3
-            maxWidth >= 540.dp -> 2
-            else -> 2
+            maxWidth >= 1000.dp -> 4
+            maxWidth >= 680.dp -> 3
+            maxWidth >= 330.dp -> 2
+            else -> 1
         }
+        val isWideScreen = maxWidth >= 700.dp
         val rows = remember(products, columnCount) { products.chunked(columnCount) }
 
         LazyColumn(
+            horizontalAlignment = Alignment.CenterHorizontally,
             contentPadding = PaddingValues(
                 top = contentPadding.calculateTopPadding() + 8.dp,
-                bottom = contentPadding.calculateBottomPadding() + 24.dp
+                bottom = contentPadding.calculateBottomPadding() + 24.dp,
+                start = contentPadding.calculateStartPadding(layoutDirection),
+                end = contentPadding.calculateEndPadding(layoutDirection)
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.fillMaxSize()
         ) {
             // Store Header & Search Bar
             item(key = "header") {
-                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 1120.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = stringResource(id = R.string.app_name),
                                 style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onBackground
+                                color = MaterialTheme.colorScheme.onBackground,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 text = stringResource(id = R.string.store_tagline),
@@ -132,6 +156,8 @@ fun ShopScreen(
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
+
+                        Spacer(modifier = Modifier.width(12.dp))
 
                         Box {
                             OutlinedButton(
@@ -150,7 +176,9 @@ fun ShopScreen(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = sortOption.label,
-                                    style = MaterialTheme.typography.labelMedium
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                             DropdownMenu(
@@ -219,15 +247,23 @@ fun ShopScreen(
             if (searchQuery.isBlank() && selectedCategory == ProductCategory.ALL) {
                 item(key = "hero_banner") {
                     HeroBazaarCard(
+                        minHeight = if (isWideScreen) 216.dp else 184.dp,
                         onExploreClick = { onCategorySelected(ProductCategory.TOTES) },
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier
+                            .widthIn(max = 1120.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
                     )
                 }
             }
 
             // Category Filter Chips
             item(key = "categories") {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 1120.dp)
+                        .fillMaxWidth()
+                ) {
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -268,7 +304,8 @@ fun ShopScreen(
                         onAction = {
                             onSearchQueryChange("")
                             onCategorySelected(ProductCategory.ALL)
-                        }
+                        },
+                        modifier = Modifier.widthIn(max = 600.dp)
                     )
                 }
             } else {
@@ -279,6 +316,7 @@ fun ShopScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier
+                            .widthIn(max = 1120.dp)
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
                     ) {
@@ -305,6 +343,7 @@ fun ShopScreen(
 
 @Composable
 private fun HeroBazaarCard(
+    minHeight: androidx.compose.ui.unit.Dp,
     onExploreClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -313,20 +352,24 @@ private fun HeroBazaarCard(
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp),
         modifier = modifier
             .fillMaxWidth()
-            .height(190.dp)
             .clickable(onClick = onExploreClick)
             .testTag("hero_bazaar_card")
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = minHeight)
+                .height(IntrinsicSize.Min)
+        ) {
             Image(
                 painter = painterResource(id = R.drawable.img_hero_kutchi),
                 contentDescription = "Rann Artisan Collection showcase",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.matchParentSize()
             )
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .matchParentSize()
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
@@ -340,7 +383,8 @@ private fun HeroBazaarCard(
             Column(
                 verticalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .heightIn(min = minHeight)
                     .padding(18.dp)
             ) {
                 Surface(
@@ -355,6 +399,8 @@ private fun HeroBazaarCard(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(20.dp))
+
                 Column {
                     Text(
                         text = "Hand-Stitched in Kutch",
@@ -366,7 +412,7 @@ private fun HeroBazaarCard(
                         text = "Abhla mirror totes, Ajrakh slings & Nirona bells direct from artisan homes.",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.9f),
-                        maxLines = 2,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -375,6 +421,7 @@ private fun HeroBazaarCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProductGridCard(
     product: KutchiProduct,
@@ -418,7 +465,8 @@ private fun ProductGridCard(
                     IconButton(
                         onClick = onToggleWishlist,
                         modifier = Modifier
-                            .size(38.dp)
+                            .minimumInteractiveComponentSize()
+                            .size(40.dp)
                             .testTag("wishlist_toggle_${product.id}")
                     ) {
                         Icon(
@@ -457,9 +505,9 @@ private fun ProductGridCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = KutchiCatalog.formatInr(product.priceInr),
@@ -485,7 +533,10 @@ private fun ProductGridCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
                     Icon(
                         imageVector = Icons.Filled.Star,
                         contentDescription = null,
@@ -496,16 +547,20 @@ private fun ProductGridCard(
                     Text(
                         text = "${product.rating}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
                     )
                 }
 
+                Spacer(modifier = Modifier.width(6.dp))
+
                 FilledTonalButton(
                     onClick = onQuickAdd,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
-                        .height(36.dp)
+                        .minimumInteractiveComponentSize()
+                        .heightIn(min = 40.dp)
                         .testTag("quick_add_${product.id}")
                 ) {
                     Icon(
@@ -516,7 +571,9 @@ private fun ProductGridCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Add",
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }

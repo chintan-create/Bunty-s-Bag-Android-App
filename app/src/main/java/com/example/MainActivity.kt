@@ -8,9 +8,16 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.ReceiptLong
@@ -44,8 +51,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -276,16 +285,34 @@ private fun MainStoreScaffold(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val useNavRail = maxWidth >= 600.dp
+        val layoutDirection = LocalLayoutDirection.current
+        val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
 
         Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            snackbarHost = {
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            if (isTopLevelRoute && !useNavRail) {
+                                WindowInsetsSides.Horizontal
+                            } else {
+                                WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                            }
+                        )
+                    )
+                )
+            },
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 if (isTopLevelRoute && !useNavRail) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 3.dp
+                        tonalElevation = 3.dp,
+                        windowInsets = WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
+                        )
                     ) {
                         TopLevelTabs.forEach { tab ->
                             val selected = currentRoute == tab.route
@@ -299,7 +326,14 @@ private fun MainStoreScaffold(
                                         bagCount = bagCount
                                     )
                                 },
-                                label = { Text(stringResource(id = tab.labelRes)) },
+                                label = {
+                                    Text(
+                                        text = stringResource(id = tab.labelRes),
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
                                 modifier = Modifier.testTag(tab.testTag)
                             )
                         }
@@ -307,10 +341,27 @@ private fun MainStoreScaffold(
                 }
             }
         ) { innerPadding ->
+            val tabContentPadding = PaddingValues(
+                top = safeDrawingPadding.calculateTopPadding(),
+                bottom = maxOf(
+                    innerPadding.calculateBottomPadding(),
+                    safeDrawingPadding.calculateBottomPadding()
+                ),
+                start = if (isTopLevelRoute && useNavRail) {
+                    0.dp
+                } else {
+                    safeDrawingPadding.calculateStartPadding(layoutDirection)
+                },
+                end = safeDrawingPadding.calculateEndPadding(layoutDirection)
+            )
+
             Row(modifier = Modifier.fillMaxSize()) {
                 if (isTopLevelRoute && useNavRail) {
                     NavigationRail(
                         containerColor = MaterialTheme.colorScheme.surface,
+                        windowInsets = WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Vertical + WindowInsetsSides.Start
+                        ),
                         modifier = Modifier.fillMaxHeight()
                     ) {
                         TopLevelTabs.forEach { tab ->
@@ -325,7 +376,14 @@ private fun MainStoreScaffold(
                                         bagCount = bagCount
                                     )
                                 },
-                                label = { Text(stringResource(id = tab.labelRes)) },
+                                label = {
+                                    Text(
+                                        text = stringResource(id = tab.labelRes),
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
                                 modifier = Modifier.testTag(tab.testTag)
                             )
                         }
@@ -355,10 +413,7 @@ private fun MainStoreScaffold(
                                 val defaultVariant = product.variants.firstOrNull() ?: "Artisan Original"
                                 viewModel.addToCart(product, defaultVariant, 1)
                             },
-                            contentPadding = PaddingValues(
-                                top = innerPadding.calculateTopPadding(),
-                                bottom = innerPadding.calculateBottomPadding()
-                            )
+                            contentPadding = tabContentPadding
                         )
                     }
 
@@ -376,10 +431,7 @@ private fun MainStoreScaffold(
                                 viewModel.toggleWishlist(product, isCurrentlySaved = true)
                             },
                             onBrowseShop = { navigateToTab(StoreRoutes.ROUTE_SHOP) },
-                            contentPadding = PaddingValues(
-                                top = innerPadding.calculateTopPadding(),
-                                bottom = innerPadding.calculateBottomPadding()
-                            )
+                            contentPadding = tabContentPadding
                         )
                     }
 
@@ -397,10 +449,7 @@ private fun MainStoreScaffold(
                                 navController.navigate(StoreRoutes.ROUTE_CHECKOUT)
                             },
                             onBrowseShop = { navigateToTab(StoreRoutes.ROUTE_SHOP) },
-                            contentPadding = PaddingValues(
-                                top = innerPadding.calculateTopPadding(),
-                                bottom = innerPadding.calculateBottomPadding()
-                            )
+                            contentPadding = tabContentPadding
                         )
                     }
 
@@ -424,10 +473,7 @@ private fun MainStoreScaffold(
                             onOpenPrivacyPolicy = {
                                 navController.navigate(StoreRoutes.ROUTE_PRIVACY_POLICY)
                             },
-                            contentPadding = PaddingValues(
-                                top = innerPadding.calculateTopPadding(),
-                                bottom = innerPadding.calculateBottomPadding()
-                            )
+                            contentPadding = tabContentPadding
                         )
                     }
 

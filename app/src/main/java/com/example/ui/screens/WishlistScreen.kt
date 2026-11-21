@@ -4,18 +4,24 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.remember
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -32,6 +38,7 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,76 +62,121 @@ fun WishlistScreen(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    val layoutDirection = LocalLayoutDirection.current
+    val startPad = contentPadding.calculateStartPadding(layoutDirection)
+    val endPad = contentPadding.calculateEndPadding(layoutDirection)
+
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(top = contentPadding.calculateTopPadding())
+            .padding(
+                top = contentPadding.calculateTopPadding(),
+                start = startPad,
+                end = endPad
+            )
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-            Text(
-                text = "Saved Crafts",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "Your handpicked Kutchi treasures",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            KutchiDiamondBorder()
-        }
+        val columnCount = if (maxWidth >= 720.dp) 2 else 1
 
-        when (wishlistState) {
-            is UiState.Loading -> {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = contentPadding.calculateBottomPadding())
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-            }
-            is UiState.Error -> {
-                EmptyBazaarState(
-                    title = "Couldn't load saved crafts",
-                    subtitle = wishlistState.message,
-                    icon = Icons.Outlined.FavoriteBorder,
-                    actionLabel = "Explore Bazaar",
-                    onAction = onBrowseShop
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 1040.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = "Saved Crafts",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
+                Text(
+                    text = "Your handpicked Kutchi treasures",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                KutchiDiamondBorder()
             }
-            is UiState.Success -> {
-                val items = wishlistState.data
-                if (items.isEmpty()) {
-                    EmptyBazaarState(
-                        title = "No saved treasures yet",
-                        subtitle = "Tap the heart on any handmade bag, potli, or stole to save it here for later.",
-                        icon = Icons.Outlined.FavoriteBorder,
-                        actionLabel = "Browse Kutchi Crafts",
-                        onAction = onBrowseShop
-                    )
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 8.dp,
-                            bottom = contentPadding.calculateBottomPadding() + 24.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+
+            when (wishlistState) {
+                is UiState.Loading -> {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = contentPadding.calculateBottomPadding())
                     ) {
-                        items(items, key = { it.productId }) { savedItem ->
-                            val catalogProduct = KutchiCatalog.findById(savedItem.productId)
-                            WishlistCard(
-                                savedItem = savedItem,
-                                catalogProduct = catalogProduct,
-                                onCardClick = { if (catalogProduct != null) onProductClick(catalogProduct) },
-                                onMoveToBag = { if (catalogProduct != null) onMoveToBag(catalogProduct) },
-                                onRemove = { if (catalogProduct != null) onRemoveFromWishlist(catalogProduct) }
-                            )
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                is UiState.Error -> {
+                    EmptyBazaarState(
+                        title = "Couldn't load saved crafts",
+                        subtitle = wishlistState.message,
+                        icon = Icons.Outlined.FavoriteBorder,
+                        actionLabel = "Explore Bazaar",
+                        onAction = onBrowseShop,
+                        modifier = Modifier
+                            .widthIn(max = 560.dp)
+                            .padding(bottom = contentPadding.calculateBottomPadding())
+                    )
+                }
+                is UiState.Success -> {
+                    val items = wishlistState.data
+                    if (items.isEmpty()) {
+                        EmptyBazaarState(
+                            title = "No saved treasures yet",
+                            subtitle = "Tap the heart on any handmade bag, potli, or stole to save it here for later.",
+                            icon = Icons.Outlined.FavoriteBorder,
+                            actionLabel = "Browse Kutchi Crafts",
+                            onAction = onBrowseShop,
+                            modifier = Modifier
+                                .widthIn(max = 560.dp)
+                                .padding(bottom = contentPadding.calculateBottomPadding())
+                        )
+                    } else {
+                        val rows = remember(items, columnCount) { items.chunked(columnCount) }
+                        LazyColumn(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 8.dp,
+                                bottom = contentPadding.calculateBottomPadding() + 24.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(
+                                items = rows,
+                                key = { row -> row.joinToString("_") { it.productId } }
+                            ) { rowItems ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier
+                                        .widthIn(max = 1040.dp)
+                                        .fillMaxWidth()
+                                ) {
+                                    rowItems.forEach { savedItem ->
+                                        val catalogProduct = KutchiCatalog.findById(savedItem.productId)
+                                        WishlistCard(
+                                            savedItem = savedItem,
+                                            catalogProduct = catalogProduct,
+                                            onCardClick = { if (catalogProduct != null) onProductClick(catalogProduct) },
+                                            onMoveToBag = { if (catalogProduct != null) onMoveToBag(catalogProduct) },
+                                            onRemove = { if (catalogProduct != null) onRemoveFromWishlist(catalogProduct) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    repeat(columnCount - rowItems.size) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -139,14 +191,15 @@ private fun WishlistCard(
     catalogProduct: KutchiProduct?,
     onCardClick: () -> Unit,
     onMoveToBag: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     ElevatedCard(
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(enabled = catalogProduct != null, onClick = onCardClick)
             .testTag("wishlist_card_${savedItem.productId}")
@@ -191,7 +244,9 @@ private fun WishlistCard(
                         enabled = catalogProduct != null,
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                         modifier = Modifier
-                            .height(38.dp)
+                            .weight(1f, fill = false)
+                            .minimumInteractiveComponentSize()
+                            .heightIn(min = 40.dp)
                             .testTag("move_to_bag_${savedItem.productId}")
                     ) {
                         Icon(
@@ -200,7 +255,12 @@ private fun WishlistCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Add to Bag", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            text = "Add to Bag",
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
 
                     IconButton(

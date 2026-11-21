@@ -3,19 +3,23 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -91,124 +95,247 @@ fun ProductDetailScreen(
                 tonalElevation = 6.dp,
                 shadowElevation = 8.dp
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .navigationBarsPadding()
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(
+                                WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                            )
+                        )
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    Column {
-                        Text(
-                            text = "Total (${quantity}x)",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = KutchiCatalog.formatInr(product.priceInr * quantity),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    Button(
-                        onClick = { onAddToBag(selectedVariant, quantity) },
-                        enabled = !isBusy,
-                        shape = MaterialTheme.shapes.medium,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier
-                            .height(52.dp)
-                            .testTag("add_to_bag_button")
+                            .widthIn(max = 1040.dp)
+                            .fillMaxWidth()
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.ShoppingBag,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Add to Bag",
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Total (${quantity}x)",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = KutchiCatalog.formatInr(product.priceInr * quantity),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Button(
+                            onClick = { onAddToBag(selectedVariant, quantity) },
+                            enabled = !isBusy,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier
+                                .heightIn(min = 52.dp)
+                                .testTag("add_to_bag_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ShoppingBag,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Add to Bag",
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
                     }
                 }
             }
         },
         modifier = modifier
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = innerPadding.calculateBottomPadding() + 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Product Image Banner with Back & Wishlist
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(320.dp)
-            ) {
-                ProductArtwork(
-                    drawableKey = product.drawableKey,
-                    contentDescription = product.name,
-                    badgeText = product.featuredBadge,
-                    modifier = Modifier.fillMaxSize()
-                )
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val useTwoPane = maxWidth >= 760.dp
+            val heroHeight = (maxHeight * 0.38f).coerceIn(220.dp, 340.dp)
 
+            if (useTwoPane) {
                 Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .windowInsetsPadding(WindowInsets.statusBars)
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .fillMaxSize()
+                        .padding(bottom = innerPadding.calculateBottomPadding())
                 ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                        shape = CircleShape,
-                        shadowElevation = 3.dp
-                    ) {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier
-                                .minimumInteractiveComponentSize()
-                                .testTag("detail_back_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back to shop"
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(
+                                    WindowInsetsSides.Top + WindowInsetsSides.Start
+                                )
                             )
-                        }
+                            .padding(16.dp)
+                    ) {
+                        ProductArtwork(
+                            drawableKey = product.drawableKey,
+                            contentDescription = product.name,
+                            badgeText = product.featuredBadge,
+                            badgeAlignment = Alignment.BottomStart,
+                            badgePadding = 14.dp,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        DetailTopBarActions(
+                            isSaved = isSaved,
+                            onBack = onBack,
+                            onToggleWishlist = onToggleWishlist,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                        )
                     }
 
-                    Surface(
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                        shape = CircleShape,
-                        shadowElevation = 3.dp
-                    ) {
-                        IconButton(
-                            onClick = onToggleWishlist,
-                            modifier = Modifier
-                                .minimumInteractiveComponentSize()
-                                .testTag("detail_wishlist_button")
-                        ) {
-                            Icon(
-                                imageVector = if (isSaved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                contentDescription = if (isSaved) "Remove from wishlist" else "Save to wishlist",
-                                tint = if (isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    Column(
+                        modifier = Modifier
+                            .weight(1.1f)
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState())
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(
+                                    WindowInsetsSides.Top + WindowInsetsSides.End
+                                )
                             )
-                        }
+                            .padding(horizontal = 24.dp, vertical = 20.dp)
+                    ) {
+                        ProductDetailsBody(
+                            product = product,
+                            selectedVariant = selectedVariant,
+                            onSelectVariant = { selectedVariant = it },
+                            quantity = quantity,
+                            onQuantityChange = { quantity = it }
+                        )
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = innerPadding.calculateBottomPadding() + 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Product Image Banner with Back & Wishlist
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(heroHeight)
+                    ) {
+                        ProductArtwork(
+                            drawableKey = product.drawableKey,
+                            contentDescription = product.name,
+                            badgeText = product.featuredBadge,
+                            badgeAlignment = Alignment.BottomStart,
+                            badgePadding = 14.dp,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        DetailTopBarActions(
+                            isSaved = isSaved,
+                            onBack = onBack,
+                            onToggleWishlist = onToggleWishlist,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .windowInsetsPadding(
+                                    WindowInsets.safeDrawing.only(
+                                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                                    )
+                                )
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = 640.dp)
+                            .fillMaxWidth()
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)
+                            )
+                            .padding(horizontal = 18.dp, vertical = 18.dp)
+                    ) {
+                        ProductDetailsBody(
+                            product = product,
+                            selectedVariant = selectedVariant,
+                            onSelectVariant = { selectedVariant = it },
+                            quantity = quantity,
+                            onQuantityChange = { quantity = it }
+                        )
                     }
                 }
             }
+        }
+    }
+}
 
-            Column(
+@Composable
+private fun DetailTopBarActions(
+    isSaved: Boolean,
+    onBack: () -> Unit,
+    onToggleWishlist: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = modifier
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+            shape = CircleShape,
+            shadowElevation = 3.dp
+        ) {
+            IconButton(
+                onClick = onBack,
                 modifier = Modifier
-                    .widthIn(max = 620.dp)
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 18.dp)
+                    .minimumInteractiveComponentSize()
+                    .testTag("detail_back_button")
             ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back to shop"
+                )
+            }
+        }
+
+        Surface(
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+            shape = CircleShape,
+            shadowElevation = 3.dp
+        ) {
+            IconButton(
+                onClick = onToggleWishlist,
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .testTag("detail_wishlist_button")
+            ) {
+                Icon(
+                    imageVector = if (isSaved) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (isSaved) "Remove from wishlist" else "Save to wishlist",
+                    tint = if (isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ProductDetailsBody(
+    product: KutchiProduct,
+    selectedVariant: String,
+    onSelectVariant: (String) -> Unit,
+    quantity: Int,
+    onQuantityChange: (Int) -> Unit
+) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -299,7 +426,7 @@ fun ProductDetailScreen(
                     product.variants.forEach { variant ->
                         FilterChip(
                             selected = variant == selectedVariant,
-                            onClick = { selectedVariant = variant },
+                            onClick = { onSelectVariant(variant) },
                             label = { Text(variant) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.secondary,
@@ -331,7 +458,7 @@ fun ProductDetailScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(
-                                onClick = { if (quantity > 1) quantity-- },
+                                onClick = { if (quantity > 1) onQuantityChange(quantity - 1) },
                                 enabled = quantity > 1,
                                 modifier = Modifier
                                     .minimumInteractiveComponentSize()
@@ -346,7 +473,7 @@ fun ProductDetailScreen(
                                 modifier = Modifier.padding(horizontal = 12.dp)
                             )
                             IconButton(
-                                onClick = { if (quantity < 10) quantity++ },
+                                onClick = { if (quantity < 10) onQuantityChange(quantity + 1) },
                                 enabled = quantity < 10,
                                 modifier = Modifier
                                     .minimumInteractiveComponentSize()
@@ -405,9 +532,6 @@ fun ProductDetailScreen(
                         )
                     }
                 }
-            }
-        }
-    }
 }
 
 @Composable

@@ -4,17 +4,20 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -70,155 +73,258 @@ fun AuthScreen(
         return
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(310.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.img_hero_kutchi),
-                    contentDescription = "Handcrafted Kutchi embroidered bags and Ajrakh textiles",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+        val useTwoPane = maxWidth >= 760.dp
+        val compactHeroHeight = (maxHeight * 0.34f).coerceIn(190.dp, 310.dp)
+
+        if (useTwoPane) {
+            Row(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Black.copy(alpha = 0.28f),
-                                    Color.Transparent,
-                                    MaterialTheme.colorScheme.background
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.img_hero_kutchi),
+                        contentDescription = "Handcrafted Kutchi embroidered bags and Ajrakh textiles",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.25f),
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.background.copy(alpha = 0.85f)
+                                    )
                                 )
                             )
-                        )
-                )
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = RoundedCornerShape(50),
-                    modifier = Modifier
-                        .windowInsetsPadding(WindowInsets.statusBars)
-                        .padding(16.dp)
-                        .align(Alignment.TopStart)
-                ) {
-                    Text(
-                        text = "BHUJ · GUJARAT · EST. KUTCH",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
-                }
-            }
-
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 520.dp)
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    text = "Bunty's Bag",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Traditional Kutchi handmade bags, mirror-work potlis, and Ajrakh textiles crafted directly with village artisans.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-                KutchiDiamondBorder()
-                Spacer(modifier = Modifier.height(18.dp))
-
-                CraftHighlightRow(
-                    icon = Icons.Outlined.AutoAwesome,
-                    title = "Authentic Abhla & Ajrakh",
-                    subtitle = "Hand-stitched in Hodka, Bhujodi, Nirona & Ajrakhpur"
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                CraftHighlightRow(
-                    icon = Icons.Outlined.Handyman,
-                    title = "Fair Artisan Direct",
-                    subtitle = "Every piece carries its maker's village provenance"
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                CraftHighlightRow(
-                    icon = Icons.Outlined.LocalShipping,
-                    title = "Cloud Bag & Order Tracking",
-                    subtitle = "Sign in to sync your saved crafts, bag, and deliveries"
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                if (!errorMessage.isNullOrBlank()) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                        shape = MaterialTheme.shapes.medium,
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        shape = RoundedCornerShape(50),
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 14.dp)
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(
+                                    WindowInsetsSides.Top + WindowInsetsSides.Start
+                                )
+                            )
+                            .padding(16.dp)
+                            .align(Alignment.TopStart)
                     ) {
                         Text(
-                            text = errorMessage ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(14.dp)
+                            text = "BHUJ · GUJARAT · EST. KUTCH",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
                 }
 
-                GoogleSignInButton(
+                Column(
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1.1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(
+                                WindowInsetsSides.Vertical + WindowInsetsSides.End
+                            )
+                        )
+                        .padding(horizontal = 28.dp, vertical = 24.dp)
+                ) {
+                    AuthContentColumn(
+                        errorMessage = errorMessage,
+                        onAuthSuccess = {
+                            errorMessage = null
+                            onAuthSuccess()
+                        },
+                        onAuthError = { errorMessage = it },
+                        onOpenPrivacyPolicy = { showPrivacyPolicy = true },
+                        modifier = Modifier
+                            .widthIn(max = 520.dp)
+                            .fillMaxWidth()
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                        )
+                    ),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(compactHeroHeight)
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.img_hero_kutchi),
+                        contentDescription = "Handcrafted Kutchi embroidered bags and Ajrakh textiles",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.28f),
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.background
+                                    )
+                                )
+                            )
+                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(
+                                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                                )
+                            )
+                            .padding(16.dp)
+                            .align(Alignment.TopStart)
+                    ) {
+                        Text(
+                            text = "BHUJ · GUJARAT · EST. KUTCH",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+
+                AuthContentColumn(
+                    errorMessage = errorMessage,
                     onAuthSuccess = {
                         errorMessage = null
                         onAuthSuccess()
                     },
-                    onAuthError = { msg ->
-                        errorMessage = msg
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-                Text(
-                    text = "New to Bunty's Bag? Signing in with Google automatically creates your patron account and syncs your bag, wishlist, and orders. You can delete your account and all data anytime from your Profile.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = { showPrivacyPolicy = true },
+                    onAuthError = { errorMessage = it },
+                    onOpenPrivacyPolicy = { showPrivacyPolicy = true },
                     modifier = Modifier
-                        .minimumInteractiveComponentSize()
-                        .testTag("auth_privacy_policy_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.PrivacyTip,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Privacy Policy & Data Practices")
-                }
-                Spacer(modifier = Modifier.height(20.dp))
+                        .widthIn(max = 520.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun AuthContentColumn(
+    errorMessage: String?,
+    onAuthSuccess: () -> Unit,
+    onAuthError: (String) -> Unit,
+    onOpenPrivacyPolicy: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.Start
+    ) {
+        Text(
+            text = "Bunty's Bag",
+            style = MaterialTheme.typography.displaySmall,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Traditional Kutchi handmade bags, mirror-work potlis, and Ajrakh textiles crafted directly with village artisans.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+        KutchiDiamondBorder()
+        Spacer(modifier = Modifier.height(18.dp))
+
+        CraftHighlightRow(
+            icon = Icons.Outlined.AutoAwesome,
+            title = "Authentic Abhla & Ajrakh",
+            subtitle = "Hand-stitched in Hodka, Bhujodi, Nirona & Ajrakhpur"
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        CraftHighlightRow(
+            icon = Icons.Outlined.Handyman,
+            title = "Fair Artisan Direct",
+            subtitle = "Every piece carries its maker's village provenance"
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        CraftHighlightRow(
+            icon = Icons.Outlined.LocalShipping,
+            title = "Cloud Bag & Order Tracking",
+            subtitle = "Sign in to sync your saved crafts, bag, and deliveries"
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        if (!errorMessage.isNullOrBlank()) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 14.dp)
+            ) {
+                Text(
+                    text = errorMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(14.dp)
+                )
+            }
+        }
+
+        GoogleSignInButton(
+            onAuthSuccess = onAuthSuccess,
+            onAuthError = onAuthError
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+        Text(
+            text = "New to Bunty's Bag? Signing in with Google automatically creates your patron account and syncs your bag, wishlist, and orders. You can delete your account and all data anytime from your Profile.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(
+            onClick = onOpenPrivacyPolicy,
+            modifier = Modifier
+                .minimumInteractiveComponentSize()
+                .testTag("auth_privacy_policy_button")
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.PrivacyTip,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Privacy Policy & Data Practices")
+        }
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }
 
@@ -250,7 +356,7 @@ private fun CraftHighlightRow(
             }
         }
         Spacer(modifier = Modifier.width(14.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
